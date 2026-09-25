@@ -1,0 +1,3 @@
+[submodule "tools/kicad-sch-lint"]
+	path = tools/kicad-sch-lint
+	url = https://github.com/rashuky/kicad-sch-lint.git

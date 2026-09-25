@@ -1,0 +1,30 @@
+# Machine-specific MCP config, written by setup.ps1 (see .mcp.json.example)
+.mcp.json
+.claude/settings.local.json
+
+# sch_check.py snapshots
+.check/
+
+# Datasheet conversions before condensing
+*.raw.md
+
+# KiCad local history, backups, per-user and generated files
+.history/
+*-backups/
+*.kicad_prl
+fp-info-cache
+*.lck
+~*
+_autosave-*
+*.bak
+*.bck
+*-save.kicad_pcb
+*-save.kicad_sch
+
+# Fabrication outputs (commit them deliberately if needed)
+/**/gerbers/
+/**/production/
+
+# Python
+__pycache__/
+*.pyc

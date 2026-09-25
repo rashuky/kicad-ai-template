@@ -1,0 +1,16 @@
+{
+  "enabledMcpjsonServers": ["kschlint", "konnect"],
+  "permissions": {
+    "allow": [
+      "mcp__kschlint",
+      "Bash(kicad-cli:*)",
+      "Bash(tools/kschlint:*)",
+      "Bash(python -m kschlint:*)",
+      "Bash(python tools/sch_check.py:*)",
+      "Bash(python tools/pdf2md.py:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ]
+  }
+}

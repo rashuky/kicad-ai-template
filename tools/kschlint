@@ -1,0 +1,4 @@
+#!/bin/sh
+# kschlint from the submodule, no install needed. Usage: tools/kschlint lint kicad
+here="$(cd "$(dirname "$0")" && pwd)"
+PYTHONPATH="$here/kicad-sch-lint${PYTHONPATH:+:$PYTHONPATH}" exec python -m kschlint "$@"

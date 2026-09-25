@@ -1,0 +1,14 @@
+* text=auto eol=lf
+# KiCad on Windows writes CRLF. Keep it in the working tree so saves do not show whole-file diffs.
+*.kicad_sch text eol=crlf
+*.kicad_pcb text eol=crlf
+*.kicad_sym text eol=crlf
+*.kicad_mod text eol=crlf
+*.kicad_pro text eol=crlf
+*-lib-table text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.pdf binary
+*.png binary
+*.step binary
+*.zip binary
