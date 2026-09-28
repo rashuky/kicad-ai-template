@@ -80,7 +80,7 @@ Details: skill `/add-part`.
 ## Records
 - `docs/power_budget.md`: update whenever a load is added, removed or changed. Mark every value DS, EST or TBD.
 - `tradeoff/<topic>.md`: requirements, candidates, decision, for every non-trivial choice.
-- `decisions.md`: decisions taken without the user. Each waits for review.
+- `decisions.md`: only decisions still waiting for the user. Delete a row once it is approved (no decision log).
 - `TODO.md`: open questions and missing parts.
 
 ## Writing
