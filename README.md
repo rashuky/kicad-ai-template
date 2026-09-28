@@ -25,7 +25,8 @@ Built and proven on a real 200-part board (a grow box controller with power stag
 
 The rules the AI follows are in [CLAUDE.md](CLAUDE.md): branch per change, edit a copy, verify
 (netlist diff, ERC diff, BOM fields, lint, render, independent review agent), then PR.
-Workflows live as Claude Code skills: `/start-project`, `/add-part`, `/verify-schematic`.
+Workflows live as Claude Code skills: `/start-project`, `/add-part`, `/verify-schematic`, `/plan-routing`.
+PCBs are routed by planned scripts, never by an autorouter (helpers in `tools/pcb/`).
 
 ## Requirements
 
@@ -134,6 +135,8 @@ tools\kschlint render kicad --sheet Power --around U101,C101
 tools\kschlint fix kicad --write                   # move colliding text, rollback on netlist change
 tools\kschlint inspect kicad --sheet Power --refs U101
 python tools\pdf2md.py datasheet\TPS62933.pdf      # raw markdown of a datasheet
+python tools\pcb\drc_summary.py kicad\Project.kicad_pcb   # DRC errors per type, unconnected per net
+& "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\snapshot.py kicad\Project.kicad_pcb snap.kicad_pcb   # board without GND fill, to render
 powershell -ExecutionPolicy Bypass -File tools\rename_project.ps1 -Name MyBoard
 ```
 
@@ -149,11 +152,13 @@ Full kschlint reference: [tools/kicad-sch-lint/README.md](tools/kicad-sch-lint/R
 | `tools/kicad-sch-lint/` | kschlint (git submodule) |
 | `tools/sch_check.py` | netlist / ERC / BOM snapshot and diff |
 | `tools/pdf2md.py` | datasheet PDF to markdown |
+| `tools/pcb/` | routing helpers: `maze.py` (path inside a planned corridor), `drc_summary.py`, `snapshot.py`, `plan_overlay.py` |
+| `docs/layout_rules.md`, `docs/routing_plan.md` | PCB checklist and routing plan templates |
 | `tools/setup_helpers.py` | Konnect installer, `.mcp.json` writer (used by setup) |
 | `tools/rename_project.ps1` | rename the KiCad project |
 | `setup.cmd`, `setup.ps1` | one-shot setup |
 | `CLAUDE.md` | rules for the AI |
-| `.claude/skills/` | `/start-project`, `/add-part`, `/verify-schematic` |
+| `.claude/skills/` | `/start-project`, `/add-part`, `/verify-schematic`, `/plan-routing` |
 | `.claude/settings.json` | enables the MCP servers, lets kicad-cli, kschlint, the check scripts and read-only git run without prompts |
 | `.mcp.json` | MCP servers with your machine's paths (generated, git-ignored) |
 
