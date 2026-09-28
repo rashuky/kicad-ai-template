@@ -79,6 +79,7 @@ Details and commands: skill `/verify-schematic`.
 ## Datasheets
 Details: skill `/add-part`.
 - Every chosen non-commodity part gets `datasheet/<Part>.md` built from `datasheet/_TEMPLATE.md`. Convert the PDF (`tools/pdf2md.py`), condense, commit the PDF next to it.
+- Keep the full conversion as `datasheet/full/<Part>.md` for lookup (troubleshooting, calibration, layout notes). Machine-converted tables can split or merge cells: check any value you rely on against the PDF.
 - Record source URL, revision, date and lifecycle status.
 - "Project notes" section: how the part is used, chosen values, margins.
 - No official datasheet? Build the md from seller data and say so at the top.
