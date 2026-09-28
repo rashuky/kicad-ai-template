@@ -58,9 +58,37 @@ Details and commands: skill `/verify-schematic`.
 6. **Independent review:** launch a separate review agent with the diff, the netlist change and the datasheets. It checks against datasheets and this file. Fix or report its findings before the PR.
 7. Tell the user to open the sheet in KiCad for a final visual check.
 
+## PCB
+**Never use an autorouter** (Freerouting, Konnect autoroute or any other), not even for "the last few nets".
+It produces tracks nobody planned, splits power pours and leaves dead ends in dense spots. Every track is planned.
+
+Stages, each a PR with an independent review:
+1. **Constraints:** `docs/layout_rules.md` (per block: placement and routing checklist from the datasheet layout examples), net classes in the `.kicad_pro`, hard limits in the `.kicad_dru` (DRC errors, not advice).
+2. **Placement** by script (functional groups, datasheet loops). Then review against `layout_rules.md`.
+3. **Critical copper** by script and locked: power pours, buck loops, sense lines, high-current paths.
+4. **Routing plan first:** `docs/routing_plan.md` with signal groups, a corridor and layer per group, via locations, inner-layer islands, the routing order, and one snapshot with the corridors drawn. The user approves the plan before routing. Skill `/plan-routing`.
+5. **Routing** by script, group by group, in the plan's order: dense escapes (fine-pitch ICs) first, then power trees, then buses, then locals, GND last. DRC after every group: no new errors, the unconnected count only goes down.
+6. **Final:** DRC 0 errors, 0 unconnected, parity 0, zones filled, fab DFM check.
+
+Routing rules (defaults, edit per project):
+- Layer directions: one outer layer runs N-S, the other E-W. Crossings switch layer at a via.
+- Inner layers stay solid GND under signals. A power island on an inner plane only where no signal on the adjacent outer layer crosses its edge (a plane gap under a track forces the return current around it).
+- Vias never in pads. Signal vias 0.6/0.3 mm, power vias sized per net class with ≥ 2 per amp at a layer change.
+- Scripts are rerunnable from the placed board: the first routing script clears all tracks, the rest add locked copper. Never rerun build or placement scripts on a routed board.
+- Corridors are planned by hand. A maze helper (`tools/pcb/maze.py`) may find the exact path inside a box the script gives it, with the layer directions as costs. It never picks the corridor, the order or the layers.
+- Snapshots only at key points: plan, after the escapes, after the buses, final (`tools/pcb/snapshot.py` hides the GND fill).
+
 ## Verify every PCB change
-- `kicad-cli pcb drc --schematic-parity`: diff against the previous report.
+- `kicad-cli pcb drc --schematic-parity`: diff against the previous report (`tools/pcb/drc_summary.py` counts errors per type and unconnected items per net).
 - `pcb_lint`, `pcb_fix` for reference designators, `pcb_render` and look at it.
+
+## KiCad python (pcbnew) pitfalls
+- Run it with KiCad's interpreter: `C:/Program Files/KiCad/10.0/bin/python.exe`.
+- Via width: `via.GetWidth(pcbnew.F_Cu)` / `SetWidth(pcbnew.F_Cu, w)`. Without the layer, KiCad 10 opens a blocking wx dialog.
+- Deleting while iterating crashes: collect `list(board.GetTracks())` and zones first, then `board.Delete(item)`.
+- `SaveBoard` can rewrite the `.kicad_pro`: back it up and restore it.
+- DRU rules: KiCad evaluates `&&` and `||` left to right with equal precedence, so parenthesise every pair. The last matching rule wins: generic rules first, specific ones after. Scope special widths with `enclosedByArea('<rule area name>')` and check each rule with a negative test (a too-thin track must fail).
+- Git Bash rewrites arguments that start with `/` into Windows paths (net names like `/SDA`): set `MSYS_NO_PATHCONV=1`.
 
 ## Naming
 - Sheet files: `PascalCase.kicad_sch`. Reused sheet instances: `<SheetType>_<Load>`, e.g. `HighSideSwitch_Pump`.
