@@ -99,7 +99,7 @@ Routing rules (defaults, edit per project):
 - Passives: 0603 or larger (hand-solderable, cheap assembly).
 - MLCC voltage rating ≥ 2x the rail voltage (DC bias derating).
 - Inductive loads (motors, pumps, valves, relays, fans) get a flyback diode.
-- Every enable input gets a pull-down (or pull-up for active-low) so loads stay off while the MCU boots.
+- Every enable and reset input is pulled to its **safe (off) level**, so loads stay off while the MCU boots or is unplugged: pull-down for active-high, pull-up for active-low. Exception: a reset whose asserted state is the safe one (e.g. an I/O expander that holds all outputs off in reset) is pulled to its active level.
 - Open-drain flags pull up to the logic rail of the reader, never to a higher rail.
 - Fuses and switches run at ≤ 75 % of rating in the worst case.
 - Prefer parts in stock at LCSC/JLCPCB. Check lifecycle (avoid NRND/EOL).
