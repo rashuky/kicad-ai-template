@@ -16,6 +16,12 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - Never commit to `main`. One branch per change, then a PR with a description.
 - No AI author, co-author or "generated with" lines in commits or PRs.
 - Force-push only when the user asks.
+- **Never merge a PR** unless the user says so for that PR.
+- Work in stages as **stacked PRs** (each branch on top of the previous one). Do not wait for approval between stages: the user reviews later. Exception: a PCB routing plan waits for the user's go (`/plan-routing`).
+- **Independent review after every commit:** a separate review agent checks the commit against the datasheets, the rules and the plan. Fix its findings in a follow-up commit before opening or updating the PR.
+- If you work in a scratch `git worktree`, remove it after pushing. A branch checked out in a worktree cannot be checked out by the user.
+- PR review comments: answer every comment. Resolve a thread only when a follow-up commit addressed it. Pure questions get an answer and stay open.
+- When the user only asks a question, answer it. Do not edit files until asked.
 
 ## Before editing KiCad files
 1. KiCad must be closed. Check for `*.lck` files in `kicad/`. If any exist, ask the user to close KiCad. Otherwise KiCad overwrites the edit on its next save.
