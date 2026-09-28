@@ -32,6 +32,15 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - Before drawing wires, get pin tips from `sch_inspect`. Wires end on pin tips, never on pin lines.
 - Place new blocks in space found by `sch_free_space`.
 - Reference numbers by sheet (100s on sheet 1, 200s on sheet 2...) unless the Project section says otherwise.
+- Insert new top-level items before `(sheet_instances` / `(embedded_fonts`, never just before the final `)`. Copied symbols need their per-pin `(pin "n" (uuid ...))` entries. Otherwise KiCad reports "an error was found ... automatically fixed" on load.
+- After a scripted edit, ask the user to open the sheet in KiCad, save and close. Commit that re-save only after a netlist diff shows no change.
+
+## Draw a new block in two passes
+1. **Labels first.** Connect every pin with a net label (or a power symbol for rails). Text edits get connectivity right easily, and the netlist diff proves it.
+2. **Then wires.** Replace the labels between parts that sit close together with wires that end on pin tips. Keep labels only for far-apart nets, buses and hierarchy. Place passives next to the pin they serve (pull-ups, decoupling, filters) so they can be wired.
+3. The netlist must not change between pass 1 and pass 2 (`sch_check.py diff`).
+
+A label-only schematic is hard to read. The labels are a verification step, not the result.
 
 ## Verify every schematic change
 Details and commands: skill `/verify-schematic`.
