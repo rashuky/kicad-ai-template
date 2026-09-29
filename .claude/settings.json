@@ -8,6 +8,7 @@
       "Bash(python -m kschlint:*)",
       "Bash(python tools/sch_check.py:*)",
       "Bash(python tools/pdf2md.py:*)",
+      "Bash(python tools/pcb/drc_summary.py:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)"

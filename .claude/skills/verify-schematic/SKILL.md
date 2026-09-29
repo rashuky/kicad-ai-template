@@ -30,7 +30,7 @@ Never conclude from coordinates.
 
 ## 4. Look at it
 `sch_render` with `around` = the changed refs (CLI: `tools/kschlint render "$WORK" --sheet <Sheet> --around U101,R101`).
-Open the PNG and check that it reads like a schematic a human drew.
+Open the PNG and check that it reads like a schematic a human drew. Nearby parts are wired, not joined by labels (CLAUDE.md, two passes).
 
 ## 5. Independent review
 Launch a review agent (Agent tool) with: the git diff of the copy against `kicad/`, the `sch_check diff` output,

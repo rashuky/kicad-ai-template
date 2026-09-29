@@ -3,7 +3,9 @@
 usage: python tools/pdf2md.py datasheet/PART.pdf [-o datasheet/PART.raw.md] [--pages 1-12]
 
 Uses pymupdf4llm (tables as markdown) when installed, else plain pymupdf text with page markers.
-The output is raw. Condense it into datasheet/<Part>.md with datasheet/_TEMPLATE.md, then delete the .raw.md.
+The output is raw. Condense it into datasheet/<Part>.md with datasheet/_TEMPLATE.md, and keep the full text as
+datasheet/full/<Part>.md for later lookup. Tables can come out with split or merged cells and figures as junk
+tables: check every value you rely on against the PDF.
 """
 import argparse, os, sys
 
@@ -41,6 +43,7 @@ def main():
         md = pymupdf4llm.to_markdown(doc, pages=pages)
     except ImportError:
         md = "\n\n".join(f"<!-- page {i + 1} -->\n\n" + doc[i].get_text("text") for i in pages)
+    md = md.replace("\x00", "").replace("\ufffd", "")          # some PDFs embed NUL / undecodable glyphs
     with open(out, "w", encoding="utf-8") as f:
         f.write(f"<!-- raw conversion of {os.path.basename(a.pdf)}, {len(pages)} of {doc.page_count} pages -->\n\n{md}")
     print(f"{out}: {len(md)} chars from {len(pages)} pages")
