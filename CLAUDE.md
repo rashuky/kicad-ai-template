@@ -9,6 +9,7 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - **Konnect** MCP: 200+ KiCad tools (schematic editing, PCB, routing, JLCPCB part search, ERC/DRC, exports). Use it when loaded.
 - `python tools/sch_check.py snapshot|diff|bom`: before/after check of nets, ERC and BOM fields.
 - `python tools/pdf2md.py <pdf>`: raw markdown from a datasheet PDF.
+- `python tools/bom.py`: priced BOM in `out/` (Excel view, JLCPCB upload, distributor order list). Generated, never committed.
 - `gh` for branches and PRs.
 - If an MCP server is missing, ask the user to run `setup.cmd` and restart Claude Code. The CLI tools work without MCP.
 
@@ -104,6 +105,15 @@ Routing rules (defaults, edit per project):
 - Open-drain flags pull up to the logic rail of the reader, never to a higher rail.
 - Fuses and switches run at ≤ 75 % of rating in the worst case.
 - Prefer parts in stock at LCSC/JLCPCB. Check lifecycle (avoid NRND/EOL).
+
+## Cost rules (JLCPCB assembly)
+- An **extended** library part costs a setup fee once per order and per BOM line. A **basic** part has no fee, but its piece price can be higher, and that difference repeats on every board.
+- Swap to a basic part only when (new piece price - old piece price) × parts per board × boards per order stays below the fee at the planned order size. Price each BOM line at its total quantity: a line shared by several refs hits other price breaks than one ref alone.
+- Bigger passive packages are not cheaper: in the basic library 0603 is the cheapest package for every common value (0805 about 1.5 to 2×, 1206 up to 4×). Go bigger only for a rating (voltage, DC bias, power).
+- THT connectors are usually cheaper than SMD ones: genuine JST SMD costs several times the THT soldering labour it saves. Keep THT for anything that gets plugged or pulled.
+- All parts on one side. A second side adds an assembly setup and a stencil.
+- A cable that is soldered in needs no connector part: `Connector_Wire:SolderWire-*` pads, symbol excluded from the BOM (see KiCad pitfalls).
+- Record every swap with old part, new part, why it is equivalent and the cost at 1 / 5 / 10+ boards (`docs/cost_estimate.md`).
 
 ## Datasheets
 Details: skill `/add-part`.
