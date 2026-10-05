@@ -36,6 +36,10 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - Every new item gets a fresh UUID.
 - Symbols on a reused sheet need an `instances` entry per sheet path, with a unique reference each.
 - Prefer KiCad built-in symbols and footprints. Parts missing from KiCad go into the project library `kicad/lib/Project.*` (already in the lib tables). No other external libraries.
+- Search the `Diode`, `Device`, `Connector*` and vendor libraries before drawing a symbol or settling for a look-alike. Example: a unidirectional TVS is `Diode:SM6T*`, `Diode:SMAJ*` or `Diode:PTVS*` (drawn like a zener), `Device:D_TVS` is bidirectional.
+- Changing a symbol's `lib_id`: embed the new library symbol in `lib_symbols`. A derived symbol (`extends`) must be flattened onto its parent's graphics with the units renamed. The pin positions must match the old symbol, or wires silently disconnect. The netlist diff proves it.
+- Things with no part to buy or place (wire pads, test pads, fiducials): `in_bom no`, not DNP. DNP draws a red cross that reads as "removed". `tools/bom.py` names excluded refs in its checks.
+- Field changes on a symbol (Value, MPN, LCSC Part, Datasheet, Description) go to the PCB footprint too. DRC with `--schematic-parity` flags every mismatch.
 - Before drawing wires, get pin tips from `sch_inspect`. Wires end on pin tips, never on pin lines.
 - **Pin stubs:** every pin starts with a straight wire of at least one grid step (1.27 mm) in the pin's own direction. Bends, junction dots, labels, power symbols and other pins attach at the end of that stub, never on the pin tip. Power symbols and PWR_FLAG need no stub of their own. Check: `python tools/sch_pin_stubs.py`.
 - Place new blocks in space found by `sch_free_space`.
@@ -90,7 +94,11 @@ Routing rules (defaults, edit per project):
 - Deleting while iterating crashes: collect `list(board.GetTracks())` and zones first, then `board.Delete(item)`.
 - `SaveBoard` can rewrite the `.kicad_pro`: back it up and restore it.
 - DRU rules: KiCad evaluates `&&` and `||` left to right with equal precedence, so parenthesise every pair. The last matching rule wins: generic rules first, specific ones after. Scope special widths with `enclosedByArea('<rule area name>')` and check each rule with a negative test (a too-thin track must fail).
-- Git Bash rewrites arguments that start with `/` into Windows paths (net names like `/SDA`): set `MSYS_NO_PATHCONV=1`.
+- Git Bash rewrites arguments that start with `/` into Windows paths (net names like `/SDA`) and `ref:path` in `git show`: set `MSYS_NO_PATHCONV=1`.
+- After moving or swapping a pad, refill the zones before DRC (`pcbnew.ZONE_FILLER(board).Fill(board.Zones())`). Stale fills give false clearance errors.
+- Footprint swaps after placement go into the placement fixup script, so a rerun of the routing chain keeps them. Keep the pad midpoint, not the footprint origin (origins differ between footprints). Build scripts place such parts by pad midpoint too.
+- `Connector_Wire:SolderWire-<area>_..._D<x>mm_OD<y>mm`: D is the conductor diameter, not the drill. Read the pad from the footprint. The `_Relief` variants add strain-relief holes about 16 mm away: check the space.
+- In Git Bash never run `cat > file` without a heredoc: it waits on stdin until the tool times out.
 
 ## Naming
 - Sheet files: `PascalCase.kicad_sch`. Reused sheet instances: `<SheetType>_<Load>`, e.g. `HighSideSwitch_Pump`.
