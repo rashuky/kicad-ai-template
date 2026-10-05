@@ -1,19 +1,24 @@
 """Pin-stub rule check (CLAUDE.md, Editing rules): every pin starts with a straight wire of at least one grid step
-along its own direction. Bends, junction dots, power symbols and other pins attach at the end of that stub.
+along its own direction. Bends, junction dots, labels, power symbols and other pins attach at the end of that stub.
 
 usage: python tools/sch_pin_stubs.py [project folder, .kicad_pro or root .kicad_sch] [grid_mm]
+(the grid needs the project argument before it, default 1.27 mm)
 Uses kschlint from tools/kicad-sch-lint, or from KSCHLINT_PATH.
-Findings per pin: pin-on-pin, junction-on-pin, pin-on-wire-middle, several-wires-at-pin, bend-at-pin, stub-too-short,
-no-stub (label on the pin tip, no wire). Power symbol and PWR_FLAG pins are exempt: they sit at the end of a stub.
-Reused sheets are checked once. Exit code 1 when anything is found."""
+Findings per pin: pin-on-pin, junction-on-pin, label-on-pin, pin-on-wire-middle, several-wires-at-pin, bend-at-pin,
+stub-too-short, no-stub (nothing but a label on the pin tip). Power symbol and PWR_FLAG pins are exempt: they sit at the end of a stub.
+Reused sheets are checked once. Exit code 0 = clean, 1 = findings, 2 = could not run (kschlint missing, bad path)."""
 import collections, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.environ.get("KSCHLINT_PATH", os.path.join(ROOT, "tools", "kicad-sch-lint")))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 from sch_check import find_root_sch  # noqa: E402
-from kschlint.model import load_project
-from kschlint.scene import build
+try:
+    from kschlint.model import load_project
+    from kschlint.scene import build
+except ImportError:
+    print("kschlint not found: run setup.cmd (git submodule) or set KSCHLINT_PATH", file=sys.stderr)
+    sys.exit(2)
 
 GRID = float(sys.argv[2]) if len(sys.argv) > 2 else 1.27
 
@@ -32,7 +37,11 @@ def inside(p, a, b, t=1e-3):
 
 
 arg = sys.argv[1] if len(sys.argv) > 1 else None
-proj = load_project(arg if arg and arg.endswith(".kicad_sch") else find_root_sch(arg))
+try:
+    proj = load_project(arg if arg and arg.endswith(".kicad_sch") else find_root_sch(arg))
+except (OSError, SystemExit) as e:
+    print(f"cannot load the project: {e}", file=sys.stderr)
+    sys.exit(2)
 seen = set()
 count = collections.Counter()
 rows = []
@@ -55,6 +64,9 @@ for page in proj.pages:
         else:
             if any(same(tip, j) for j in sc.junctions):
                 why.append("junction-on-pin")
+            if any(same(tip, (lab.x, lab.y)) for lab in sc.sch.labels) and any(
+                    same(tip, s.a) or same(tip, s.b) for s in segs):
+                why.append("label-on-pin")       # a label on the tip next to a wire. Label alone: no-stub
             if any(inside(tip, s.a, s.b) for s in segs):
                 why.append("pin-on-wire-middle")
             ends = [s for s in segs if same(tip, s.a) or same(tip, s.b)]

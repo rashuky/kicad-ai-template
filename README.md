@@ -136,7 +136,7 @@ tools\kschlint fix kicad --write                   # move colliding text, rollba
 tools\kschlint inspect kicad --sheet Power --refs U101
 python tools\pdf2md.py datasheet\TPS62933.pdf      # raw markdown of a datasheet
 python tools\sch_pin_stubs.py                      # pins without a straight wire stub
-python toolsom.py --boards 1,5,10                # priced BOM, JLCPCB upload, order list into out\
+python tools\bom.py --boards 1,5,10                # priced BOM, JLCPCB upload, order list into out\
 python tools\pcb\drc_summary.py kicad\Project.kicad_pcb   # DRC errors per type, unconnected per net
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\snapshot.py kicad\Project.kicad_pcb snap.kicad_pcb   # board without GND fill, to render
 powershell -ExecutionPolicy Bypass -File tools\rename_project.ps1 -Name MyBoard

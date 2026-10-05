@@ -23,7 +23,7 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - If you work in a scratch `git worktree`, remove it after pushing. A branch checked out in a worktree cannot be checked out by the user.
 - PR review comments: answer every comment. Resolve a thread only when a follow-up commit addressed it. Pure questions get an answer and stay open.
 - When the user only asks a question, answer it. Do not edit files until asked.
-- **After a PR of the stack is merged:** merge the new base into the next branch and cascade the merges up the stack (no force-push, each conflict resolved once). Never text-merge a `.kicad_pcb`: take the branch's own board when it is newer, or rebuild it from that branch's netlist with the build script. After every step: ERC, DRC with parity, and check the board is unchanged where it should be.
+- **After a PR of the stack is merged:** merge the new base into the next branch and cascade the merges up the stack (no force-push, each conflict resolved once). Never text-merge a `.kicad_pcb`: take the branch's own board when it is newer. An unrouted board can be rebuilt from that branch's netlist with the build script. A routed board: rerun the whole chain (build, placement fixup, routing) or keep the branch's board. After every step: ERC, DRC with parity, and check the board is unchanged where it should be.
 - Review agents recompute every number from the source data (prices, counts, totals), they do not just read the text. Shared BOM lines, price breaks and stale counts are where the mistakes hide.
 
 ## Before editing KiCad files
@@ -99,7 +99,7 @@ Routing rules (defaults, edit per project):
 - Git Bash rewrites arguments that start with `/` into Windows paths (net names like `/SDA`) and `ref:path` in `git show`: set `MSYS_NO_PATHCONV=1`.
 - After moving or swapping a pad, refill the zones before DRC (`pcbnew.ZONE_FILLER(board).Fill(board.Zones())`). Stale fills give false clearance errors.
 - Footprint swaps after placement go into the placement fixup script, so a rerun of the routing chain keeps them. Keep the pad midpoint, not the footprint origin (origins differ between footprints). Build scripts place such parts by pad midpoint too.
-- `Connector_Wire:SolderWire-<area>_..._D<x>mm_OD<y>mm`: D is the conductor diameter, not the drill. Read the pad from the footprint. The `_Relief` variants add strain-relief holes about 16 mm away: check the space.
+- `Connector_Wire:SolderWire-<area>_..._D<x>mm_OD<y>mm`: D is the conductor diameter, not the drill. Read the pad from the footprint. The `_Relief` variants add strain-relief holes 6 to 42 mm away (grows with wire size): check the space.
 - In Git Bash never run `cat > file` without a heredoc: it waits on stdin until the tool times out.
 
 ## Naming
@@ -119,8 +119,8 @@ Routing rules (defaults, edit per project):
 ## Cost rules (JLCPCB assembly)
 - An **extended** library part costs a setup fee once per order and per BOM line. A **basic** part has no fee, but its piece price can be higher, and that difference repeats on every board.
 - Swap to a basic part only when (new piece price - old piece price) × parts per board × boards per order stays below the fee at the planned order size. Price each BOM line at its total quantity: a line shared by several refs hits other price breaks than one ref alone.
-- Bigger passive packages are not cheaper: in the basic library 0603 is the cheapest package for every common value (0805 about 1.5 to 2×, 1206 up to 4×). Go bigger only for a rating (voltage, DC bias, power).
-- THT connectors are usually cheaper than SMD ones: genuine JST SMD costs several times the THT soldering labour it saves. Keep THT for anything that gets plugged or pulled.
+- Bigger passive packages are not cheaper: in the JLCPCB basic library 0603 was the cheapest package for every common value (checked 2026-10). Compare the piece prices before going bigger. Go bigger only for a rating (voltage, DC bias, power).
+- THT connectors are usually cheaper than SMD ones: genuine JST SMD connectors cost more than the THT soldering labour they save (checked 2026-10). Keep THT for anything that gets plugged or pulled.
 - All parts on one side. A second side adds an assembly setup and a stencil.
 - A cable that is soldered in needs no connector part: `Connector_Wire:SolderWire-*` pads, symbol excluded from the BOM (see KiCad pitfalls).
 - Record every swap with old part, new part, why it is equivalent and the cost at 1 / 5 / 10+ boards (`docs/cost_estimate.md`).

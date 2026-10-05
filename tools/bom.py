@@ -14,8 +14,9 @@ Suppliers
 - JLCPCB (assembly): basic / extended library, stock, price breaks in USD. No key needed.
 - Europe, first one that knows the MPN from the same manufacturer: TME, then Farnell, then Mouser. Each needs a
   free API key in the environment, or its lookups are skipped ("no key"):
-    TME_TOKEN, TME_SECRET   (developers.tme.eu, anonymous token + application secret)
-    FARNELL_API_KEY         (partner.element14.com)
+    TME_TOKEN, TME_SECRET   (developers.tme.eu, anonymous token + application secret), TME_COUNTRY (default PL)
+    FARNELL_API_KEY         (partner.element14.com), FARNELL_STORE (default de.farnell.com)
+  JLC_EXTENDED_FEE_USD sets the setup fee per extended line (default 3).
     MOUSER_API_KEY          (mouser.com, Search API)
   RS has no public price API, so it is not included.
 Answers are cached in out/bom_cache.json for 7 days. Only real answers and "not found" are cached, so adding a
@@ -57,6 +58,9 @@ EXTERNAL = os.path.join(ROOT, "docs", "external_parts.csv")
 KICAD_CLI = None    # set in main()
 UA = {"User-Agent": "Mozilla/5.0 kicad-ai-template bom tool"}
 CACHE_DAYS = 7
+EXTENDED_FEE_USD = float(os.environ.get("JLC_EXTENDED_FEE_USD", "3"))   # per extended line per order, check the live quote
+TME_COUNTRY = os.environ.get("TME_COUNTRY", "PL")                    # TME prices and stock for this country
+FARNELL_STORE = os.environ.get("FARNELL_STORE", "de.farnell.com")     # element14 store id
 CATEGORY_ORDER = ["Semiconductors", "Passives", "Connectors", "Protection", "Other", "External modules"]
 
 
@@ -129,7 +133,7 @@ def read_external():
         return out
     with open(EXTERNAL, encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            out.append({"category": "External modules", "refs": [], "qty": int(r["Qty_per_board"]),
+            out.append({"category": r.get("Category") if r.get("Category") in CATEGORY_ORDER else "External modules", "refs": [], "qty": int(r["Qty_per_board"]),
                         "value": r["Item"], "footprint": "", "manufacturer": r["Manufacturer"], "mpn": r["MPN"].strip(),
                         "lcsc": "", "description": r["Notes"], "dnp": False, "external": True, "mixed": {},
                         "est_eur": float(r["Est_price_EUR"]) if r["Est_price_EUR"] else None})
@@ -137,6 +141,10 @@ def read_external():
 
 
 # ------------------------------------------------------------------ price helpers
+def _pl(n):
+    return "" if n == 1 else "s"
+
+
 def unit_at(breaks, q):
     """Unit price of the price break that covers quantity q (breaks: [(qty, unit)] ascending)."""
     u = breaks[0][1]
@@ -241,7 +249,8 @@ def jlc(lcsc):
         return {"error": f'JLCPCB API: {d.get("message") or d.get("code")}'}
     for c in ((d.get("data") or {}).get("componentPageInfo") or {}).get("list") or []:
         if c.get("componentCode") == lcsc:
-            return {"library": {"base": "basic", "expand": "extended"}.get(c.get("componentLibraryType"), c.get("componentLibraryType")),
+            return {"library": ("extended (preferred)" if c.get("componentLibraryType") == "expand" and c.get("preferredComponentFlag")
+                                else {"base": "basic", "expand": "extended"}.get(c.get("componentLibraryType"), c.get("componentLibraryType"))),
                     "stock": c.get("stockCount"), "currency": "USD",
                     "breaks": [(p["startNumber"], p["productPrice"]) for p in c.get("componentPrices") or []],
                     "url": f"https://jlcpcb.com/partdetail/{lcsc}"}
@@ -256,7 +265,7 @@ def tme(mpn, maker):
 
     def call(action, params):
         url = f"https://api.tme.eu/{action}.json"
-        params = {**params, "Token": tok, "Country": "PL", "Language": "EN", "Currency": "EUR"}
+        params = {**params, "Token": tok, "Country": TME_COUNTRY, "Language": "EN", "Currency": "EUR"}
         q = lambda s, *a: urllib.parse.quote(s, safe="")          # encode "/" too, the signature needs it
         enc = urllib.parse.urlencode(sorted(params.items()), quote_via=q)
         base = "POST&" + q(url) + "&" + q(enc)
@@ -282,7 +291,7 @@ def farnell(mpn, maker):
     key = os.environ.get("FARNELL_API_KEY")
     if not key:
         return {"error": "no key"}
-    q = urllib.parse.urlencode({"term": f"manuPartNum:{mpn}", "storeInfo.id": "de.farnell.com",
+    q = urllib.parse.urlencode({"term": f"manuPartNum:{mpn}", "storeInfo.id": FARNELL_STORE,
                                 "resultsSettings.offset": 0, "resultsSettings.numberOfResults": 10,
                                 "resultsSettings.responseGroup": "large,inventory", "callInfo.responseDataFormat": "json",
                                 "callInfo.apiKey": key})
@@ -298,7 +307,7 @@ def farnell(mpn, maker):
             "moq": p.get("translatedMinimumOrderQuality", 1), "mult": p.get("orderMultiple") or 1, "currency": "EUR",
             "lead": f'{st.get("leastLeadTime")} days' if st.get("leastLeadTime") else "",
             "breaks": [(b["from"], b["cost"]) for b in p.get("prices") or []],
-            "url": f'https://de.farnell.com/{p.get("sku")}'}
+            "url": f'https://{FARNELL_STORE}/{p.get("sku")}'}
 
 
 def mouser(mpn, maker):
@@ -348,14 +357,15 @@ def write_xlsx(path, lines, boards, generated, cache_note):
     ws["A2"] = (f"Generated {generated} from the KiCad schematic + docs/external_parts.csv. {cache_note} "
                 "JLCPCB prices in USD. European prices in the currency of the EU currency column.")
     ws["A3"] = ("One row = one BOM line: one unique part (one MPN), however many times it is used. "
-                "Qty/board = how many of that part one board needs. JLCPCB charges $3 per extended line per order.")
+                f"Qty/board = how many of that part one board needs. JLCPCB charges about ${EXTENDED_FEE_USD:g} per extended line per order "
+                "(preferred extended parts: none on Economic PCBA, check the quote).")
     head = ["Category", "Refs", "Qty/board", "Value", "Footprint", "Manufacturer", "MPN", "Description", "DNP",
             "JLC LCSC#", "JLC library", "JLC stock"]
     for n in boards:
-        head += [f"JLC unit $ ({n} boards)", f"JLC line $ ({n})"]
+        head += [f"JLC unit [USD] ({n} board{_pl(n)})", f"JLC line [USD] ({n})"]
     head += ["EU supplier", "EU part#", "EU stock", "EU lead time", "EU min / mult", "EU currency"]
     for n in boards:
-        head += [f"EU order qty ({n} boards)", f"EU unit ({n})", f"EU line ({n})"]
+        head += [f"EU order qty ({n} board{_pl(n)})", f"EU unit ({n})", f"EU line ({n})"]
     head += ["External: est. EUR per board", "Notes"]
     R0 = 4
     for c, h in enumerate(head, 1):
@@ -387,15 +397,15 @@ def write_xlsx(path, lines, boards, generated, cache_note):
         for n in boards:
             jl = jlc_line(ln, n)
             if jl:
-                ws.cell(r, col[f"JLC unit $ ({n} boards)"], jl[1])
-                ws.cell(r, col[f"JLC line $ ({n})"], f'={L(f"JLC unit $ ({n} boards)")}{r}*{jl[0]}')
+                ws.cell(r, col[f"JLC unit [USD] ({n} board{_pl(n)})"], jl[1])
+                ws.cell(r, col[f"JLC line [USD] ({n})"], f'={L(f"JLC unit [USD] ({n} board{_pl(n)})")}{r}*{jl[0]}')
                 if j.get("stock") is not None and j["stock"] < jl[0]:
                     ws.cell(r, col["JLC stock"]).fill = red
             el = eu_line(ln, n)
             if el:
-                ws.cell(r, col[f"EU order qty ({n} boards)"], el[0])
+                ws.cell(r, col[f"EU order qty ({n} board{_pl(n)})"], el[0])
                 ws.cell(r, col[f"EU unit ({n})"], el[1])
-                ws.cell(r, col[f"EU line ({n})"], f'={L(f"EU unit ({n})")}{r}*{L(f"EU order qty ({n} boards)")}{r}')
+                ws.cell(r, col[f"EU line ({n})"], f'={L(f"EU unit ({n})")}{r}*{L(f"EU order qty ({n} board{_pl(n)})")}{r}')
                 if e.get("stock") is not None and e["stock"] < el[0]:
                     ws.cell(r, col["EU stock"]).fill = red
         if ln["est_eur"] is not None:
@@ -410,7 +420,7 @@ def write_xlsx(path, lines, boards, generated, cache_note):
     last = r
     # biggest cost offenders: 1st / 2nd / 3rd most expensive line per category, at the largest board count
     n = max(boards)
-    for key, fn in ((f"JLC line $ ({n})", jlc_line), (f"EU line ({n})", eu_line)):
+    for key, fn in ((f"JLC line [USD] ({n})", jlc_line), (f"EU line ({n})", eu_line)):
         bycat = collections.defaultdict(list)
         for ln in lines:
             x = fn(ln, n)
@@ -426,14 +436,14 @@ def write_xlsx(path, lines, boards, generated, cache_note):
     for cat in [c for c in CATEGORY_ORDER if any(ln["category"] == c for ln in lines)] + ["All"]:
         r += 1
         ws.cell(r, 1, cat).font = bold
-        for h in [f"JLC line $ ({n})" for n in boards] + [f"EU line ({n})" for n in boards] + ["External: est. EUR per board"]:
+        for h in [f"JLC line [USD] ({n})" for n in boards] + [f"EU line ({n})" for n in boards] + ["External: est. EUR per board"]:
             rng = f"{L(h)}{R0 + 1}:{L(h)}{last}"
             ws.cell(r, col[h], f"=SUM({rng})" if cat == "All" else f'=SUMIF({A},"{cat}",{rng})').font = bold
     r += 1
-    ws.cell(r, 1, "JLCPCB extended setup fees, $3 per extended line per order").font = bold
+    ws.cell(r, 1, f"JLCPCB extended setup fees, ${EXTENDED_FEE_USD:g} per extended line per order (preferred ones included)").font = bold
     for n in boards:
-        ws.cell(r, col[f"JLC line $ ({n})"],
-                f'=COUNTIFS({L("JLC library")}{R0 + 1}:{L("JLC library")}{last},"extended",{L("DNP")}{R0 + 1}:{L("DNP")}{last},"")*3').font = bold
+        ws.cell(r, col[f"JLC line [USD] ({n})"],
+                f'=COUNTIFS({L("JLC library")}{R0 + 1}:{L("JLC library")}{last},"extended*",{L("DNP")}{R0 + 1}:{L("DNP")}{last},"")*{EXTENDED_FEE_USD:g}').font = bold
     widths = {"Refs": 28, "Value": 18, "Description": 40, "Notes": 30, "MPN": 22, "Footprint": 22, "EU supplier": 30}
     for h, i in col.items():
         ws.column_dimensions[get_column_letter(i)].width = widths.get(h, 12)
@@ -451,7 +461,7 @@ def write_xlsx(path, lines, boards, generated, cache_note):
             "EU columns: TME, then Farnell, then Mouser, the first with the MPN from the same manufacturer. 'no key' = API key missing.",
             "EU order qty: need rounded up to the supplier minimum and multiple, or more if a higher price break is cheaper.",
             "External parts: rough estimates from docs/external_parts.csv, per board.",
-            "Extended JLCPCB parts add a $3 setup fee each per order: own row under the totals."], 1):
+            f"Extended JLCPCB parts add a setup fee (about ${EXTENDED_FEE_USD:g}) each per order: own row under the totals."], 1):
         lg.cell(i, 1, t)
     lg.column_dimensions["A"].width = 140
     os.makedirs(os.path.dirname(path), exist_ok=True)

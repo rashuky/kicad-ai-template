@@ -1,13 +1,13 @@
 # BOM and cost estimate
 
-Prices checked _YYYY-MM-DD_. Legend: **DS** = live distributor price, **EST** = estimate (check with a live quote).
+Prices checked _YYYY-MM-DD_. Legend: **LIVE** = distributor price from `tools/bom.py` or a quote, **EST** = estimate (check with a live quote).
 
 BOM files are generated, not committed. `python tools/bom.py` writes to `out/`:
 - `bom.xlsx`: priced view (JLCPCB and a European distributor, 1 / 5 / 10 boards, basic or extended, stock, lead time).
 - `bom_jlcpcb.csv`: the JLCPCB assembly BOM upload.
 - `bom_order_<N>.csv`: manufacturer, MPN, quantity for N boards. Upload it to the TME or Farnell BOM tool for a real quote.
 
-Modules and other things bought for the board but not on the schematic (MCU module, display, PSU, cables) go into `docs/external_parts.csv`. The tool lists them too.
+Modules and other things bought for the board but not on the schematic (MCU module, display, PSU, cables) go into `docs/external_parts.csv` (`Est_price_EUR` is per piece, `Category` groups them in the sheet). The tool lists them too.
 
 ## Board facts
 
@@ -21,15 +21,15 @@ Modules and other things bought for the board but not on the schematic (MCU modu
 
 - **BOM line:** one unique part (one MPN), however many times it is used.
 - **Part:** one placed component (one reference).
-- **Joint:** one soldered pad. JLCPCB charges assembly per joint, THT about 10× more than SMD.
+- **Joint:** one soldered pad. JLCPCB charges assembly per joint, a hand-soldered THT joint far more than an SMD one.
 - **Basic / extended:** JLCPCB library class. Each extended line costs a setup fee per order. Basic lines cost nothing extra.
 
 ## Components only
 
-| Source | 1 board [USD] | 5 boards, total [USD] | Source |
+| Supplier | 1 board | 5 boards, total | Source |
 |---|---:|---:|---|
-| JLCPCB parts (for PCBA) | | | DS |
-| European distributor | | | DS / EST |
+| JLCPCB parts (for PCBA) [USD] | | | LIVE |
+| European distributor [EUR] | | | LIVE / EST |
 
 ## PCB fabrication (5 boards)
 
