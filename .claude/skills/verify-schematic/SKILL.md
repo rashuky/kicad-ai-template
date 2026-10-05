@@ -27,6 +27,7 @@ Never conclude from coordinates.
 - `sch_lint` (MCP, project = `$WORK`) or `tools/kschlint lint "$WORK" --sheet <Sheet>`. No new errors.
 - Text collisions: `sch_fix` with write, or `tools/kschlint fix "$WORK" --sheet <Sheet> --write`. It rolls back if the netlist changes.
 - Geometry errors (wire through body, wire end on pin line, body overlap): fix by hand, then lint again.
+- Pin stubs: `python tools/sch_pin_stubs.py "$WORK"`. No new findings on the changed sheets (bend, junction, label, power symbol or pin right on a pin tip).
 
 ## 4. Look at it
 `sch_render` with `around` = the changed refs (CLI: `tools/kschlint render "$WORK" --sheet <Sheet> --around U101,R101`).

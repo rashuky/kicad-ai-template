@@ -36,6 +36,7 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - Symbols on a reused sheet need an `instances` entry per sheet path, with a unique reference each.
 - Prefer KiCad built-in symbols and footprints. Parts missing from KiCad go into the project library `kicad/lib/Project.*` (already in the lib tables). No other external libraries.
 - Before drawing wires, get pin tips from `sch_inspect`. Wires end on pin tips, never on pin lines.
+- **Pin stubs:** every pin starts with a straight wire of at least one grid step (1.27 mm) in the pin's own direction. Bends, junction dots, labels, power symbols and other pins attach at the end of that stub, never on the pin tip. Power symbols and PWR_FLAG need no stub of their own. Check: `python tools/sch_pin_stubs.py`.
 - Place new blocks in space found by `sch_free_space`.
 - Reference numbers by sheet (100s on sheet 1, 200s on sheet 2...) unless the Project section says otherwise.
 - Insert new top-level items before `(sheet_instances` / `(embedded_fonts`, never just before the final `)`. Copied symbols need their per-pin `(pin "n" (uuid ...))` entries. Otherwise KiCad reports "an error was found ... automatically fixed" on load.
