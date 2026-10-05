@@ -23,6 +23,8 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - If you work in a scratch `git worktree`, remove it after pushing. A branch checked out in a worktree cannot be checked out by the user.
 - PR review comments: answer every comment. Resolve a thread only when a follow-up commit addressed it. Pure questions get an answer and stay open.
 - When the user only asks a question, answer it. Do not edit files until asked.
+- **After a PR of the stack is merged:** merge the new base into the next branch and cascade the merges up the stack (no force-push, each conflict resolved once). Never text-merge a `.kicad_pcb`: take the branch's own board when it is newer, or rebuild it from that branch's netlist with the build script. After every step: ERC, DRC with parity, and check the board is unchanged where it should be.
+- Review agents recompute every number from the source data (prices, counts, totals), they do not just read the text. Shared BOM lines, price breaks and stale counts are where the mistakes hide.
 
 ## Before editing KiCad files
 1. KiCad must be closed. Check for `*.lck` files in `kicad/`. If any exist, ask the user to close KiCad. Otherwise KiCad overwrites the edit on its next save.
@@ -134,12 +136,14 @@ Details: skill `/add-part`.
 ## Records
 - `docs/power_budget.md`: update whenever a load is added, removed or changed. Mark every value DS, EST or TBD.
 - `tradeoff/<topic>.md`: requirements, candidates, decision, for every non-trivial choice.
-- `decisions.md`: only decisions still waiting for the user. Delete a row once it is approved (no decision log).
-- `TODO.md`: open questions and missing parts.
+- `decisions.md`: only decisions still waiting for the user. Delete a row once it is approved (no decision log). Point references to the deleted row at the approval ("approved in the PR #12 review").
+- `TODO.md`: open questions and missing parts. Work for another repo (firmware, enclosure) lives in that repo's plan. TODO.md holds one pointer to it, no copied list.
+- Generated files (BOM exports, priced lists, order lists) are not committed. The tool that makes them is.
 
 ## Writing
 - Short and precise. Keep all facts, drop filler.
 - No long dashes, no semicolons in prose, comments, commits or PRs.
+- Tables carry the unit in [] in the header row (`Price [USD]`, `Current [A]`). Cells hold numbers only. Say whether a price is per board or for the whole order.
 
 ## Project
 <!-- Fill in when starting a project. Examples: -->
