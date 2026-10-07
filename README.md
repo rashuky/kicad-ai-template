@@ -36,7 +36,7 @@ PCBs are routed by planned scripts, never by an autorouter (helpers in `tools/pc
 | [KiCad](https://www.kicad.org/download/windows/) | 10.0.x | the EDA suite, `kicad-cli` | `winget install KiCad.KiCad` | yes |
 | [Git for Windows](https://git-scm.com/download/win) | any recent | version control, Git Bash for Claude Code | `winget install Git.Git` | yes |
 | [Python](https://www.python.org/downloads/windows/) | 3.10+ | kschlint, check scripts | `winget install Python.Python.3.12` | yes |
-| [pymupdf](https://pypi.org/project/PyMuPDF/), [pymupdf4llm](https://pypi.org/project/pymupdf4llm/) | latest | schematic render, PDF to markdown | `python -m pip install --user pymupdf pymupdf4llm` | yes |
+| [pymupdf](https://pypi.org/project/PyMuPDF/), [pymupdf4llm](https://pypi.org/project/pymupdf4llm/), [openpyxl](https://pypi.org/project/openpyxl/) | latest | schematic render, PDF to markdown, BOM Excel | `python -m pip install --user pymupdf pymupdf4llm openpyxl` | yes |
 | [Claude Code](https://code.claude.com/docs/en/setup) | latest | the AI | `irm https://claude.ai/install.ps1 \| iex` | yes (if neither CLI nor VS Code extension found) |
 | [Konnect](https://github.com/mixelpixx/Konnect) | 0.12+ | KiCad plugin + MCP server | [release zip](https://github.com/mixelpixx/Konnect/releases/latest), KiCad Plugin Manager | yes |
 | [kicad-sch-lint](https://github.com/rashuky/kicad-sch-lint) | submodule | lint, render, pin tips, fixer | `git submodule update --init` | yes |
@@ -77,7 +77,7 @@ Use this if you do not want the script, or a step failed.
 1. Install KiCad 10, Git, Python 3.10+ and GitHub CLI from the links above. Tick "Add python.exe to PATH" in the Python installer.
 2. Add `C:\Program Files\KiCad\10.0\bin` to your user PATH (Start → "Edit environment variables for your account" → Path → New). Check in a new terminal: `kicad-cli version`.
 3. `git submodule update --init`
-4. `python -m pip install --user pymupdf pymupdf4llm`
+4. `python -m pip install --user pymupdf pymupdf4llm openpyxl`
 5. **Konnect**, in KiCad:
    1. Download `konnect-pcm-v<version>-windows.zip` from [Konnect releases](https://github.com/mixelpixx/Konnect/releases/latest). Take the `konnect-pcm-` file, not the standalone binary.
    2. KiCad project manager → **Plugin and Content Manager** → **Install from File...** → pick the zip.
@@ -135,6 +135,8 @@ tools\kschlint render kicad --sheet Power --around U101,C101
 tools\kschlint fix kicad --write                   # move colliding text, rollback on netlist change
 tools\kschlint inspect kicad --sheet Power --refs U101
 python tools\pdf2md.py datasheet\TPS62933.pdf      # raw markdown of a datasheet
+python tools\sch_pin_stubs.py                      # pins without a straight wire stub
+python tools\bom.py --boards 1,5,10                # priced BOM, JLCPCB upload, order list into out\
 python tools\pcb\drc_summary.py kicad\Project.kicad_pcb   # DRC errors per type, unconnected per net
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\snapshot.py kicad\Project.kicad_pcb snap.kicad_pcb   # board without GND fill, to render
 powershell -ExecutionPolicy Bypass -File tools\rename_project.ps1 -Name MyBoard
@@ -152,6 +154,8 @@ Full kschlint reference: [tools/kicad-sch-lint/README.md](tools/kicad-sch-lint/R
 | `tools/kicad-sch-lint/` | kschlint (git submodule) |
 | `tools/sch_check.py` | netlist / ERC / BOM snapshot and diff |
 | `tools/pdf2md.py` | datasheet PDF to markdown |
+| `tools/sch_pin_stubs.py` | pin stub check (nothing attached right on a pin tip) |
+| `tools/bom.py` | priced BOM (Excel), JLCPCB upload CSV, distributor order list, into the git-ignored `out/`. Extras bought for the board go in `docs/external_parts.csv` |
 | `tools/pcb/` | routing helpers: `maze.py` (path inside a planned corridor), `drc_summary.py`, `snapshot.py`, `plan_overlay.py` |
 | `docs/layout_rules.md`, `docs/routing_plan.md` | PCB checklist and routing plan templates |
 | `tools/setup_helpers.py` | Konnect installer, `.mcp.json` writer (used by setup) |

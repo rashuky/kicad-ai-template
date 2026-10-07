@@ -9,6 +9,7 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - **Konnect** MCP: 200+ KiCad tools (schematic editing, PCB, routing, JLCPCB part search, ERC/DRC, exports). Use it when loaded.
 - `python tools/sch_check.py snapshot|diff|bom`: before/after check of nets, ERC and BOM fields.
 - `python tools/pdf2md.py <pdf>`: raw markdown from a datasheet PDF.
+- `python tools/bom.py`: priced BOM in `out/` (Excel view, JLCPCB upload, distributor order list). Generated, never committed.
 - `gh` for branches and PRs.
 - If an MCP server is missing, ask the user to run `setup.cmd` and restart Claude Code. The CLI tools work without MCP.
 
@@ -22,6 +23,8 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - If you work in a scratch `git worktree`, remove it after pushing. A branch checked out in a worktree cannot be checked out by the user.
 - PR review comments: answer every comment. Resolve a thread only when a follow-up commit addressed it. Pure questions get an answer and stay open.
 - When the user only asks a question, answer it. Do not edit files until asked.
+- **After a PR of the stack is merged:** merge the new base into the next branch and cascade the merges up the stack (no force-push, each conflict resolved once). Never text-merge a `.kicad_pcb`: take the branch's own board when it is newer. An unrouted board can be rebuilt from that branch's netlist with the build script. A routed board: rerun the whole chain (build, placement fixup, routing) or keep the branch's board. After every step: ERC, DRC with parity, and check the board is unchanged where it should be.
+- Review agents recompute every number from the source data (prices, counts, totals), they do not just read the text. Shared BOM lines, price breaks and stale counts are where the mistakes hide.
 
 ## Before editing KiCad files
 1. KiCad must be closed. Check for `*.lck` files in `kicad/`. If any exist, ask the user to close KiCad. Otherwise KiCad overwrites the edit on its next save.
@@ -35,7 +38,12 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - Every new item gets a fresh UUID.
 - Symbols on a reused sheet need an `instances` entry per sheet path, with a unique reference each.
 - Prefer KiCad built-in symbols and footprints. Parts missing from KiCad go into the project library `kicad/lib/Project.*` (already in the lib tables). No other external libraries.
+- Search the `Diode`, `Device`, `Connector*` and vendor libraries before drawing a symbol or settling for a look-alike. Example: a unidirectional TVS is `Diode:SM6T*`, `Diode:SMAJ*` or `Diode:PTVS*` (drawn like a zener), `Device:D_TVS` is bidirectional.
+- Changing a symbol's `lib_id`: embed the new library symbol in `lib_symbols`. A derived symbol (`extends`) must be flattened onto its parent's graphics with the units renamed. The pin positions must match the old symbol, or wires silently disconnect. The netlist diff proves it.
+- Things with no part to buy or place (wire pads, test pads, fiducials): `in_bom no`, not DNP. DNP draws a red cross that reads as "removed". `tools/bom.py` names excluded refs in its checks.
+- Field changes on a symbol (Value, MPN, LCSC Part, Datasheet, Description) go to the PCB footprint too. DRC with `--schematic-parity` flags every mismatch.
 - Before drawing wires, get pin tips from `sch_inspect`. Wires end on pin tips, never on pin lines.
+- **Pin stubs:** every pin starts with a straight wire of at least one grid step (1.27 mm) in the pin's own direction. Bends, junction dots, labels, power symbols and other pins attach at the end of that stub, never on the pin tip. Power symbols and PWR_FLAG need no stub of their own. Check: `python tools/sch_pin_stubs.py`.
 - Place new blocks in space found by `sch_free_space`.
 - Reference numbers by sheet (100s on sheet 1, 200s on sheet 2...) unless the Project section says otherwise.
 - Insert new top-level items before `(sheet_instances` / `(embedded_fonts`, never just before the final `)`. Copied symbols need their per-pin `(pin "n" (uuid ...))` entries. Otherwise KiCad reports "an error was found ... automatically fixed" on load.
@@ -88,7 +96,11 @@ Routing rules (defaults, edit per project):
 - Deleting while iterating crashes: collect `list(board.GetTracks())` and zones first, then `board.Delete(item)`.
 - `SaveBoard` can rewrite the `.kicad_pro`: back it up and restore it.
 - DRU rules: KiCad evaluates `&&` and `||` left to right with equal precedence, so parenthesise every pair. The last matching rule wins: generic rules first, specific ones after. Scope special widths with `enclosedByArea('<rule area name>')` and check each rule with a negative test (a too-thin track must fail).
-- Git Bash rewrites arguments that start with `/` into Windows paths (net names like `/SDA`): set `MSYS_NO_PATHCONV=1`.
+- Git Bash rewrites arguments that start with `/` into Windows paths (net names like `/SDA`) and `ref:path` in `git show`: set `MSYS_NO_PATHCONV=1`.
+- After moving or swapping a pad, refill the zones before DRC (`pcbnew.ZONE_FILLER(board).Fill(board.Zones())`). Stale fills give false clearance errors.
+- Footprint swaps after placement go into the placement fixup script, so a rerun of the routing chain keeps them. Keep the pad midpoint, not the footprint origin (origins differ between footprints). Build scripts place such parts by pad midpoint too.
+- `Connector_Wire:SolderWire-<area>_..._D<x>mm_OD<y>mm`: D is the conductor diameter, not the drill. Read the pad from the footprint. The `_Relief` variants add strain-relief holes 6 to 42 mm away (grows with wire size): check the space.
+- In Git Bash never run `cat > file` without a heredoc: it waits on stdin until the tool times out.
 
 ## Naming
 - Sheet files: `PascalCase.kicad_sch`. Reused sheet instances: `<SheetType>_<Load>`, e.g. `HighSideSwitch_Pump`.
@@ -104,6 +116,15 @@ Routing rules (defaults, edit per project):
 - Fuses and switches run at ≤ 75 % of rating in the worst case.
 - Prefer parts in stock at LCSC/JLCPCB. Check lifecycle (avoid NRND/EOL).
 
+## Cost rules (JLCPCB assembly)
+- An **extended** library part costs a setup fee once per order and per BOM line. A **basic** part has no fee, but its piece price can be higher, and that difference repeats on every board.
+- Swap to a basic part only when (new piece price - old piece price) × parts per board × boards per order stays below the fee at the planned order size. Price each BOM line at its total quantity: a line shared by several refs hits other price breaks than one ref alone.
+- Bigger passive packages are not cheaper: in the JLCPCB basic library 0603 was the cheapest package for every common value (checked 2026-10). Compare the piece prices before going bigger. Go bigger only for a rating (voltage, DC bias, power).
+- THT connectors are usually cheaper than SMD ones: genuine JST SMD connectors cost more than the THT soldering labour they save (checked 2026-10). Keep THT for anything that gets plugged or pulled.
+- All parts on one side. A second side adds an assembly setup and a stencil.
+- A cable that is soldered in needs no connector part: `Connector_Wire:SolderWire-*` pads, symbol excluded from the BOM (see KiCad pitfalls).
+- Record every swap with old part, new part, why it is equivalent and the cost at 1 / 5 / 10+ boards (`docs/cost_estimate.md`).
+
 ## Datasheets
 Details: skill `/add-part`.
 - Every chosen non-commodity part gets `datasheet/<Part>.md` built from `datasheet/_TEMPLATE.md`. Convert the PDF (`tools/pdf2md.py`), condense, commit the PDF next to it.
@@ -115,12 +136,14 @@ Details: skill `/add-part`.
 ## Records
 - `docs/power_budget.md`: update whenever a load is added, removed or changed. Mark every value DS, EST or TBD.
 - `tradeoff/<topic>.md`: requirements, candidates, decision, for every non-trivial choice.
-- `decisions.md`: only decisions still waiting for the user. Delete a row once it is approved (no decision log).
-- `TODO.md`: open questions and missing parts.
+- `decisions.md`: only decisions still waiting for the user. Delete a row once it is approved (no decision log). Point references to the deleted row at the approval ("approved in the PR #12 review").
+- `TODO.md`: open questions and missing parts. Work for another repo (firmware, enclosure) lives in that repo's plan. TODO.md holds one pointer to it, no copied list.
+- Generated files (BOM exports, priced lists, order lists) are not committed. The tool that makes them is.
 
 ## Writing
 - Short and precise. Keep all facts, drop filler.
 - No long dashes, no semicolons in prose, comments, commits or PRs.
+- Tables carry the unit in [] in the header row (`Price [USD]`, `Current [A]`). Cells hold numbers only. Say whether a price is per board or for the whole order.
 
 ## Project
 <!-- Fill in when starting a project. Examples: -->

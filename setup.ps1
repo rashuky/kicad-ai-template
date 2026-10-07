@@ -7,7 +7,7 @@
   2. Installs Claude Code (native installer) if the 'claude' command is missing.
   3. Puts kicad-cli on the user PATH.
   4. Fetches the kicad-sch-lint submodule.
-  5. Installs Python packages: pymupdf, pymupdf4llm.
+  5. Installs Python packages: pymupdf, pymupdf4llm, openpyxl.
   6. Installs the Konnect KiCad plugin (KiCad must be closed).
   7. Writes .mcp.json for Claude Code with this machine's paths.
   8. Runs a health check.
@@ -168,8 +168,8 @@ elseif (Test-Command git) {
 # ---------------------------------------------------------------- 5. python packages
 Say 'Python packages'
 if (Get-PythonVersion) {
-    $missing = @((& python -c "import importlib.util as u; print(' '.join(m for m in ('pymupdf', 'pymupdf4llm') if not u.find_spec(m)))") -split ' ' | Where-Object { $_ })
-    if (-not $missing) { Ok 'pymupdf, pymupdf4llm' }
+    $missing = @((& python -c "import importlib.util as u; print(' '.join(m for m in ('pymupdf', 'pymupdf4llm', 'openpyxl') if not u.find_spec(m)))") -split ' ' | Where-Object { $_ })
+    if (-not $missing) { Ok 'pymupdf, pymupdf4llm, openpyxl' }
     elseif ($CheckOnly) { Warn "missing: $($missing -join ', ') (python -m pip install --user $($missing -join ' '))" }
     else {
         $inVenv = (& python -c "import sys; print(sys.prefix != sys.base_prefix)") -eq 'True'

@@ -21,6 +21,9 @@ _autosave-*
 *-save.kicad_pcb
 *-save.kicad_sch
 
+# Generated BOM, price cache and order lists (tools/bom.py)
+/out/
+
 # Fabrication outputs (commit them deliberately if needed)
 /**/gerbers/
 /**/production/
