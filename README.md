@@ -149,7 +149,7 @@ Full kschlint reference: [tools/kicad-sch-lint/README.md](tools/kicad-sch-lint/R
 
 ## Routing quality
 
-The last step of a routing chain is `tools/pcb/route_metrics.py <new board> <previous board>`. It prints one column per board. The table goes in the PR.
+The last step of a routing chain is `tools/pcb/route_metrics.py <new board> <previous board>`. It prints one column per board. The table goes in the PR. Each board needs its `.kicad_pro` next to it (net classes).
 
 | Criterion | Better | What it measures | Why it matters |
 |---|---|---|---|
@@ -158,7 +158,7 @@ The last step of a routing chain is `tools/pcb/route_metrics.py <new board> <pre
 | Segments off 0/45/90/135° | lower | Tracks at odd angles | Layout rule: octilinear tracks only |
 | Bends sharper than 45° | lower | Joints of two segments turning more than 45°, away from pads and vias | Layout rule: at most 45° per bend |
 | Track length without GND [mm] | lower | Total track length except GND | Less resistance, less noise pickup, less board space |
-| Track length on the pour layer [mm] | lower | Track on the GND pour layer (default B.Cu) | Every track there cuts the pour |
+| Track length on the pour layer without GND [mm] | lower | Track on the GND pour layer (default B.Cu), GND left out | Every other-net track there cuts the pour |
 | Main GND pour piece on the pour layer [mm²] | higher | Area of the largest connected piece of the GND pour | One big piece gives better return paths and shielding |
 | GND pour pieces on the pour layer | lower | Pieces of 1 mm² or more | Each extra piece is pour cut off by tracks. It needs stitching and is weaker |
 
@@ -170,13 +170,14 @@ Measured on the 200-part board the template came from (same placement, three rou
 |---|---|---|---|---|
 | Signal and power vias | 312 | 209 | 222 | lower |
 | Track segments | 1810 | 1403 | 1416 | lower |
+| Segments off 0/45/90/135° | 0 | 0 | 0 | lower |
 | Bends sharper than 45° | 16 | 2 | 2 | lower |
 | Track length without GND [mm] | 4981 | 5154 | 4978 | lower |
-| Track length on B.Cu [mm] | 2311 | 2477 | 2261 | lower |
+| Track length on B.Cu without GND [mm] | 2311 | 2477 | 2261 | lower |
 | Main B.Cu GND pour piece [mm²] | 14306 | 13828 | 13974 | higher |
 | B.Cu GND pour pieces | 3 | 11 | 10 | lower |
 
-Hybrid (hand blocks plus the maze on 4 measured nets) kept the hand version's vias and bends and got the maze's length. The full maze keeps the pour whole but costs 50 % more vias and many sharp bends.
+Hybrid (hand blocks plus the maze on 4 measured nets) kept the hand version's bends and nearly its vias (+13), and got the maze's length. The full maze keeps the pour whole but costs 50 % more vias and many sharp bends.
 
 ## Repo layout
 

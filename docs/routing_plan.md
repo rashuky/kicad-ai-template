@@ -30,8 +30,8 @@ _Legend: colours per layer, numbers match the table. A corridor may move 1 to 2 
 3. Power trees, to every supply pin, and a GND fan-out for every GND pin.
 4. Buses.
 5. Locals.
-6. GND: fan-out vias, pours, stitching.
-7. Maze nets (hybrid only, see below).
+6. Maze nets (hybrid only, see below).
+7. GND: fan-out vias, pours, stitching.
 8. Metrics: `tools/pcb/route_metrics.py <new board> <previous board>`, table into the PR.
 
 DRC after each group: no new errors, the unconnected count only goes down. The GND pour pieces on the pour layer do not grow.

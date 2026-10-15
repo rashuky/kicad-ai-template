@@ -69,14 +69,14 @@ Details and commands: skill `/verify-schematic`.
 ## PCB
 **Never use a board autorouter** (Freerouting, Konnect autoroute or any other), not even for "the last few nets".
 It produces tracks nobody planned, splits power pours and leaves dead ends in dense spots. Every track is planned.
-The maze helper (`tools/pcb/maze.py`) is allowed only as the scripted step of hybrid routing (below), on nets a measured rule picks.
+The maze helper (`tools/pcb/maze.py`) runs only inside a box the script gives it, or on the nets the hybrid rule picks (below). A full-maze build is a measuring copy, never committed.
 
 Stages, each a PR with an independent review:
 1. **Constraints:** `docs/layout_rules.md` (per block: placement and routing checklist from the datasheet layout examples), net classes in the `.kicad_pro`, hard limits in the `.kicad_dru` (DRC errors, not advice).
 2. **Placement** by script (functional groups, datasheet loops). Then review against `layout_rules.md`.
 3. **Critical copper** by script and locked: power pours, buck loops, sense lines, high-current paths.
 4. **Routing plan first:** `docs/routing_plan.md` with signal groups, a corridor and layer per group, via locations, inner-layer islands, the routing order, and one snapshot with the corridors drawn. The user approves the plan before routing. Skill `/plan-routing`.
-5. **Routing** by script, group by group, in the plan's order: dense escapes (fine-pitch ICs) first, then power trees, then buses, then locals, GND last. DRC after every group: no new errors, the unconnected count only goes down.
+5. **Routing** by script, group by group, in the plan's order: dense escapes (fine-pitch ICs) first, then power trees, then buses, then locals, then the hybrid maze nets, GND last. DRC after every group: no new errors, the unconnected count only goes down.
    Power trees reach **every** supply pin (ESD VCC pins, pull-up rails, sensor rails) and every GND pin gets a fan-out path before any signal block is drawn. Signal blocks drawn first box them in and force a rework.
 6. **Final:** DRC 0 errors, 0 unconnected, parity 0, zones filled, fab DFM check.
 7. **Metrics:** the last chain step is `tools/pcb/route_metrics.py <new board> <previous board>`. Its table (with the "Better" column) goes in the PR. No criterion gets worse without a reason in the PR. Criteria: README "Routing quality".
@@ -86,13 +86,13 @@ Routing rules (defaults, edit per project):
 - Inner layers stay solid GND under signals. A power island on an inner plane only where no signal on the adjacent outer layer crosses its edge (a plane gap under a track forces the return current around it).
 - Vias never in pads. Signal vias 0.6/0.3 mm, power vias sized per net class with ≥ 2 per amp at a layer change.
 - Scripts are rerunnable from the placed board: the first routing script clears all tracks, the rest add locked copper. Never rerun build or placement scripts on a routed board.
-- Corridors are planned by hand. A maze helper (`tools/pcb/maze.py`) may find the exact path inside a box the script gives it, with the layer directions as costs. It never picks the corridor, the order or the layers.
+- Corridors are planned by hand. A maze helper (`tools/pcb/maze.py`) may find the exact path inside a box the script gives it, with the layer directions as costs. It never picks the corridor, the order or the layers, except for the hybrid maze nets below.
 - **Hybrid routing** (recommended once the hand version exists): hand blocks for everything, the maze only for the nets `route_metrics.py --candidates <hand board> <maze board>` lists (long signal nets whose hand route detours 15 % or more past the maze route, never power). The list is board specific: rerun it after any placement change. Rules for that step:
   - Raise the maze cost of the pour layer (e.g. 2.5x on B.Cu) so it prefers the signal layer.
   - Keep-out boxes protect local rules the maze does not know (no tracks under a buck IC's control pins, escape fans).
   - Check each maze net by its own copper islands. KiCad DRC can report 0 unconnected while a net is still open.
   - Hand blocks skip the maze nets in that mode. Keep a `ROUTE_MODE` switch (`hand`, `hybrid`, `maze`) and assert its value, so all three can be built and compared.
-- Compare routing variants as stacked PRs (one branch each), every one rebuilt from the same placed board, with the metrics table in each PR.
+- Compare routing variants (hand, hybrid) as stacked PRs, one branch each, every one rebuilt from the same placed board, with the metrics table in each PR. The full-maze copy only feeds `--candidates`.
 - **Pour layer check:** after each block, fill the zones and count the GND pour pieces on the pour layer (`route_metrics.py`). A ring of tracks on that layer cuts an island off. To find the culprit, move one track at a time to an inner layer, refill and measure the gain. Fix with runs on the signal layer, short hops, or the free bands along the board edges.
 - Hand-route coordinates are absolute. Assert the anchor pad positions at the top of each block, so a placement change fails loudly instead of drawing tracks into nothing.
 - Interchangeable channels (ESD arrays, buffer channels): choose the pin order against the connector before routing, so the bus does not cross itself.

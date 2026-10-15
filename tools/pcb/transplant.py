@@ -7,6 +7,8 @@ a parent block that has an equal block in the child is kept as is (same text, sa
 equal parent block are added, parent blocks with no equal child block are dropped. Then KiCad loads and saves the
 result until the file is stable (KiCad python, KICAD_PY or the default install path).
 Check the result with DRC like any other board. Use it for stacked PRs: parent = the board of the base branch.
+Write <out> into a scratch folder: KiCad's save can rewrite a .kicad_pro next to it (it is backed up and restored
+anyway). Boards with groups or generated items are refused: they list member uuids, which this would mix up.
 """
 import collections
 import os
@@ -24,7 +26,7 @@ def blocks(path):
     while True:
         while i < n and s[i] in " \t\n":
             i += 1
-        if s[i] == ")":
+        if i >= n or s[i] == ")":
             break
         d, j, ins = 0, i, False
         while True:
@@ -59,6 +61,8 @@ def kind(b):
 def main(parent, child, out):
     _, bp = blocks(parent)
     hc, bc = blocks(child)
+    if any(kind(b) in ("group", "generated") for b in bp + bc):
+        sys.exit("groups or generated items found: their member uuids would not match, transplant refused")
     avail = collections.Counter(norm(b) for b in bc)
     res, dropped = [], 0
     for b in bp:
@@ -81,6 +85,20 @@ def main(parent, child, out):
         idx = max([i for i, x in enumerate(res) if kind(x) == kind(b)], default=len(res) - 1)
         res.insert(idx + 1, b)
     open(out, "w", encoding="utf-8", newline="\n").write(hc + "".join("\t" + b + "\n" for b in res) + ")\n")
+    side = [os.path.splitext(out)[0] + e for e in (".kicad_pro", ".kicad_prl")]
+    saved = {f: open(f, "rb").read() for f in side if os.path.exists(f)}
+    try:
+        settle(out)
+    finally:
+        for f in side:                  # SaveBoard can rewrite or create the project files next to the board
+            if f in saved:
+                open(f, "wb").write(saved[f])
+            elif os.path.exists(f):
+                os.remove(f)
+    print(f"kept {kept}, dropped {dropped}, added {len(added)}: {dict(collections.Counter(kind(b) for b in added))}")
+
+
+def settle(out):
     for _ in range(4):                  # KiCad reorders some items on the first load: save until the file is stable
         before = open(out, encoding="utf-8", newline="").read()
         r = subprocess.run([PY, "-c", "import pcbnew,sys; b=pcbnew.LoadBoard(sys.argv[1]); pcbnew.SaveBoard(sys.argv[1], b)",
@@ -90,7 +108,6 @@ def main(parent, child, out):
             break
     else:
         sys.exit("board file does not settle")
-    print(f"kept {kept}, dropped {dropped}, added {len(added)}: {dict(collections.Counter(kind(b) for b in added))}")
 
 
 if __name__ == "__main__":
