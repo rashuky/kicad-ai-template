@@ -28,6 +28,7 @@ description: Plan and route a placed PCB without an autorouter. Corridors and la
 - Hand blocks assert their anchor pad positions first: coordinates are absolute, so a placement change must fail loudly.
 - After each group: `tools/pcb/drc_summary.py` (0 errors, unconnected only goes down), the GND pour pieces on the pour layer (`tools/pcb/route_metrics.py`, the count must not grow), a look at a render, commit, review agent. Fix its findings before the next group.
 - Pour split: move one track at a time off the pour layer (to an inner layer), refill and measure the gain. The tracks with the biggest gain go to the signal layer or get a short hop.
+- Before the metrics: `tools/pcb/place_check.py <board>` (decoupling, boot, FB, sense filters, ESD: pad distance, track path, GND via). It must pass.
 - The last chain step is `tools/pcb/route_metrics.py <new board> <previous board>`. The table goes in the PR.
 - Snapshots (`tools/pcb/snapshot.py`, then `pcb_render`) after the escapes, after the buses and at the end, into `docs/img/`. Update the Progress table and log every deviation from the plan.
 

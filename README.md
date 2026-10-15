@@ -141,6 +141,7 @@ python tools\pcb\drc_summary.py kicad\Project.kicad_pcb   # DRC errors per type,
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\snapshot.py kicad\Project.kicad_pcb snap.kicad_pcb   # board without GND fill, to render
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\route_metrics.py new\Project.kicad_pcb old\Project.kicad_pcb   # routing quality table
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\route_metrics.py --candidates hand\Project.kicad_pcb maze\Project.kicad_pcb   # maze nets for hybrid
+& "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\place_check.py kicad\Project.kicad_pcb   # parts close to their pins (docs\place_rules.csv)
 python tools\pcb\transplant.py base.kicad_pcb new.kicad_pcb out.kicad_pcb   # board with only the real changes, for a small PR diff
 powershell -ExecutionPolicy Bypass -File tools\rename_project.ps1 -Name MyBoard
 ```
@@ -191,7 +192,7 @@ Hybrid (hand blocks plus the maze on 4 measured nets) kept the hand version's be
 | `tools/pdf2md.py` | datasheet PDF to markdown |
 | `tools/sch_pin_stubs.py` | pin stub check (nothing attached right on a pin tip) |
 | `tools/bom.py` | priced BOM (Excel), JLCPCB upload CSV, distributor order list, into the git-ignored `out/`. Extras bought for the board go in `docs/external_parts.csv` |
-| `tools/pcb/` | routing helpers: `maze.py` (path inside a planned corridor), `drc_summary.py`, `snapshot.py`, `plan_overlay.py`, `route_metrics.py` (routing quality table, hybrid maze nets), `transplant.py` (minimal board diffs) |
+| `tools/pcb/` | routing helpers: `maze.py` (path inside a planned corridor), `drc_summary.py`, `snapshot.py`, `plan_overlay.py`, `place_check.py` (parts close to their pins, rules in `docs/place_rules.csv`), `route_metrics.py` (routing quality table, hybrid maze nets), `transplant.py` (minimal board diffs) |
 | `docs/layout_rules.md`, `docs/routing_plan.md` | PCB checklist and routing plan templates |
 | `tools/setup_helpers.py` | Konnect installer, `.mcp.json` writer (used by setup) |
 | `tools/rename_project.ps1` | rename the KiCad project |

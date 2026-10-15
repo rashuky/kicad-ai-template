@@ -73,13 +73,14 @@ The maze helper (`tools/pcb/maze.py`) runs only inside a box the script gives it
 
 Stages, each a PR with an independent review:
 1. **Constraints:** `docs/layout_rules.md` (per block: placement and routing checklist from the datasheet layout examples), net classes in the `.kicad_pro`, hard limits in the `.kicad_dru` (DRC errors, not advice).
-2. **Placement** by script (functional groups, datasheet loops). Then review against `layout_rules.md`.
+2. **Placement** by script (functional groups, datasheet loops). Then review against `layout_rules.md`. Every "at pin", "next to" and "within" rule there gets a row in `docs/place_rules.csv`. `tools/pcb/place_check.py <board> --placement` must pass.
 3. **Critical copper** by script and locked: power pours, buck loops, sense lines, high-current paths.
 4. **Routing plan first:** `docs/routing_plan.md` with signal groups, a corridor and layer per group, via locations, inner-layer islands, the routing order, and one snapshot with the corridors drawn. The user approves the plan before routing. Skill `/plan-routing`.
 5. **Routing** by script, group by group, in the plan's order: dense escapes (fine-pitch ICs) first, then power trees, then buses, then locals, then the hybrid maze nets, GND last. DRC after every group: no new errors, the unconnected count only goes down.
    Power trees reach **every** supply pin (ESD VCC pins, pull-up rails, sensor rails) and every GND pin gets a fan-out path before any signal block is drawn. Signal blocks drawn first box them in and force a rework.
 6. **Final:** DRC 0 errors, 0 unconnected, parity 0, zones filled, fab DFM check.
-7. **Metrics:** the last chain step is `tools/pcb/route_metrics.py <new board> <previous board>`. Its table (with the "Better" column) goes in the PR. No criterion gets worse without a reason in the PR. Criteria: README "Routing quality".
+7. **Proximity:** `tools/pcb/place_check.py <board>` checks those rows on the routed board too (track path between the pads, GND via at each GND pad).
+8. **Metrics:** the last chain step is `tools/pcb/route_metrics.py <new board> <previous board>`. Its table (with the "Better" column) goes in the PR. No criterion gets worse without a reason in the PR. Criteria: README "Routing quality".
 
 Routing rules (defaults, edit per project):
 - Layer directions: one outer layer runs N-S, the other E-W. Crossings switch layer at a via.

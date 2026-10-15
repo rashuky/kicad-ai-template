@@ -1,6 +1,7 @@
 # Layout rules (placement and routing checklist)
 
 Every PCB stage is checked against this file. Hard limits live in the project `.kicad_dru` (DRC errors).
+Every "at pin", "next to" and "within" rule below gets a row in `docs/place_rules.csv` (part, IC, max distance, max track, GND via), checked by `tools/pcb/place_check.py`.
 
 ## Stackup and planes
 - _Layers, copper weight, fab stackup name._
