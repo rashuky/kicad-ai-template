@@ -141,7 +141,8 @@ python tools\pcb\drc_summary.py kicad\Project.kicad_pcb   # DRC errors per type,
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\snapshot.py kicad\Project.kicad_pcb snap.kicad_pcb   # board without GND fill, to render
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\route_metrics.py new\Project.kicad_pcb old\Project.kicad_pcb   # routing quality table
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\route_metrics.py --candidates hand\Project.kicad_pcb maze\Project.kicad_pcb   # maze nets for hybrid
-& "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\place_check.py kicad\Project.kicad_pcb   # parts close to their pins (docs\place_rules.csv)
+& "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\place_check.py kicad\Project.kicad_pcb --placement   # after placement: parts close to their pins (docs\place_rules.csv)
+& "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\place_check.py kicad\Project.kicad_pcb   # routed board: also track path and GND vias
 python tools\pcb\transplant.py base.kicad_pcb new.kicad_pcb out.kicad_pcb   # board with only the real changes, for a small PR diff
 powershell -ExecutionPolicy Bypass -File tools\rename_project.ps1 -Name MyBoard
 ```

@@ -39,4 +39,4 @@ description: Plan and route a placed PCB without an autorouter. Corridors and la
 4. Compare hand and hybrid with `route_metrics.py` (one column each). Keep the hybrid only if it wins on the table. Hand and hybrid are each a stacked PR.
 
 ## 4. Done when
-DRC 0 errors, 0 unconnected, parity 0, zones filled, silkscreen findings no worse than before routing, metrics table in the PR.
+DRC 0 errors, 0 unconnected, parity 0, zones filled, silkscreen findings no worse than before routing, `place_check.py` passes, metrics table in the PR.

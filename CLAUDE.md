@@ -78,9 +78,8 @@ Stages, each a PR with an independent review:
 4. **Routing plan first:** `docs/routing_plan.md` with signal groups, a corridor and layer per group, via locations, inner-layer islands, the routing order, and one snapshot with the corridors drawn. The user approves the plan before routing. Skill `/plan-routing`.
 5. **Routing** by script, group by group, in the plan's order: dense escapes (fine-pitch ICs) first, then power trees, then buses, then locals, then the hybrid maze nets, GND last. DRC after every group: no new errors, the unconnected count only goes down.
    Power trees reach **every** supply pin (ESD VCC pins, pull-up rails, sensor rails) and every GND pin gets a fan-out path before any signal block is drawn. Signal blocks drawn first box them in and force a rework.
-6. **Final:** DRC 0 errors, 0 unconnected, parity 0, zones filled, fab DFM check.
-7. **Proximity:** `tools/pcb/place_check.py <board>` checks those rows on the routed board too (track path between the pads, GND via at each GND pad).
-8. **Metrics:** the last chain step is `tools/pcb/route_metrics.py <new board> <previous board>`. Its table (with the "Better" column) goes in the PR. No criterion gets worse without a reason in the PR. Criteria: README "Routing quality".
+6. **Final:** DRC 0 errors, 0 unconnected, parity 0, zones filled, fab DFM check, `tools/pcb/place_check.py <board>` passes (the placement rows again, now with the track path between the pads and the GND via at each GND pad).
+7. **Metrics:** the last chain step is `tools/pcb/route_metrics.py <new board> <previous board>`. Its table (with the "Better" column) goes in the PR. No criterion gets worse without a reason in the PR. Criteria: README "Routing quality".
 
 Routing rules (defaults, edit per project):
 - Layer directions: one outer layer runs N-S, the other E-W. Crossings switch layer at a via.
