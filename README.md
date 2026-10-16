@@ -26,7 +26,7 @@ Built and proven on a real 200-part board (a grow box controller with power stag
 The rules the AI follows are in [CLAUDE.md](CLAUDE.md): branch per change, edit a copy, verify
 (netlist diff, ERC diff, BOM fields, lint, render, independent review agent), then PR.
 Workflows live as Claude Code skills: `/start-project`, `/add-part`, `/verify-schematic`, `/plan-routing`.
-PCBs are routed by planned scripts, never by an autorouter (helpers in `tools/pcb/`).
+PCBs are routed by planned scripts, never by a board autorouter (helpers in `tools/pcb/`). A maze helper may route only the few long nets a measured rule picks (hybrid routing), and every result is scored with `tools/pcb/route_metrics.py`.
 
 ## Requirements
 
@@ -139,10 +139,47 @@ python tools\sch_pin_stubs.py                      # pins without a straight wir
 python tools\bom.py --boards 1,5,10                # priced BOM, JLCPCB upload, order list into out\
 python tools\pcb\drc_summary.py kicad\Project.kicad_pcb   # DRC errors per type, unconnected per net
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\snapshot.py kicad\Project.kicad_pcb snap.kicad_pcb   # board without GND fill, to render
+& "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\route_metrics.py new\Project.kicad_pcb old\Project.kicad_pcb   # routing quality table
+& "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\route_metrics.py --candidates hand\Project.kicad_pcb maze\Project.kicad_pcb   # maze nets for hybrid
+& "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\place_check.py kicad\Project.kicad_pcb --placement   # after placement: parts close to their pins (docs\place_rules.csv)
+& "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\place_check.py kicad\Project.kicad_pcb   # routed board: also track path and GND vias
+python tools\pcb\transplant.py base.kicad_pcb new.kicad_pcb out.kicad_pcb   # board with only the real changes, for a small PR diff
 powershell -ExecutionPolicy Bypass -File tools\rename_project.ps1 -Name MyBoard
 ```
 
 Full kschlint reference: [tools/kicad-sch-lint/README.md](tools/kicad-sch-lint/README.md).
+
+## Routing quality
+
+The last step of a routing chain is `tools/pcb/route_metrics.py <new board> <previous board>`. It prints one column per board. The table goes in the PR. Each board needs its `.kicad_pro` next to it (net classes).
+
+| Criterion | Better | What it measures | Why it matters |
+|---|---|---|---|
+| Signal and power vias (no GND) | lower | Layer changes on every net except GND | Each via adds a drill, some inductance and a failure point, and blocks space on every layer. GND stitching vias are wanted, so they are left out |
+| Track segments | lower | Straight track pieces | Fewer pieces mean fewer bends and simpler routes, easier to review and change |
+| Segments off 0/45/90/135° | lower | Tracks at odd angles | Layout rule: octilinear tracks only |
+| Bends sharper than 45° | lower | Joints of two segments turning more than 45°, away from pads and vias | Layout rule: at most 45° per bend |
+| Track length without GND [mm] | lower | Total track length except GND | Less resistance, less noise pickup, less board space |
+| Track length on the pour layer without GND [mm] | lower | Track on the GND pour layer (default B.Cu), GND left out | Every other-net track there cuts the pour |
+| Main GND pour piece on the pour layer [mm²] | higher | Area of the largest connected piece of the GND pour | One big piece gives better return paths and shielding |
+| GND pour pieces on the pour layer | lower | Pieces of 1 mm² or more | Each extra piece is pour cut off by tracks. It needs stitching and is weaker |
+
+The criteria pull against each other (a shorter route may need more vias). Read them together and explain in the PR any criterion that gets worse. Settings (pour layer, power net classes, hybrid thresholds) sit at the top of the script.
+
+Measured on the 200-part board the template came from (same placement, three routing variants):
+
+| Criterion | Maze | Hand | Hybrid | Better |
+|---|---|---|---|---|
+| Signal and power vias | 312 | 209 | 222 | lower |
+| Track segments | 1810 | 1403 | 1416 | lower |
+| Segments off 0/45/90/135° | 0 | 0 | 0 | lower |
+| Bends sharper than 45° | 16 | 2 | 2 | lower |
+| Track length without GND [mm] | 4981 | 5154 | 4978 | lower |
+| Track length on B.Cu without GND [mm] | 2311 | 2477 | 2261 | lower |
+| Main B.Cu GND pour piece [mm²] | 14306 | 13828 | 13974 | higher |
+| B.Cu GND pour pieces | 3 | 11 | 10 | lower |
+
+Hybrid (hand blocks plus the maze on 4 measured nets) kept the hand version's bends and nearly its vias (+13), and got the maze's length. The full maze keeps the pour whole but costs 50 % more vias and many sharp bends.
 
 ## Repo layout
 
@@ -156,7 +193,7 @@ Full kschlint reference: [tools/kicad-sch-lint/README.md](tools/kicad-sch-lint/R
 | `tools/pdf2md.py` | datasheet PDF to markdown |
 | `tools/sch_pin_stubs.py` | pin stub check (nothing attached right on a pin tip) |
 | `tools/bom.py` | priced BOM (Excel), JLCPCB upload CSV, distributor order list, into the git-ignored `out/`. Extras bought for the board go in `docs/external_parts.csv` |
-| `tools/pcb/` | routing helpers: `maze.py` (path inside a planned corridor), `drc_summary.py`, `snapshot.py`, `plan_overlay.py` |
+| `tools/pcb/` | routing helpers: `maze.py` (path inside a planned corridor), `drc_summary.py`, `snapshot.py`, `plan_overlay.py`, `place_check.py` (parts close to their pins, rules in `docs/place_rules.csv`), `route_metrics.py` (routing quality table, hybrid maze nets), `transplant.py` (minimal board diffs) |
 | `docs/layout_rules.md`, `docs/routing_plan.md` | PCB checklist and routing plan templates |
 | `tools/setup_helpers.py` | Konnect installer, `.mcp.json` writer (used by setup) |
 | `tools/rename_project.ps1` | rename the KiCad project |
