@@ -1,0 +1,8 @@
+Shop,Shipping_PLN,Free_from_PLN,Delivery,Src,Notes
+TME,15.00,,1 to 2 working days,EST,Real cost in the cart
+Farnell,30.00,250,1 to 2 working days,EST,pl.farnell.com. Check the threshold in the cart
+Mouser,88.00,270,2 to 4 working days,EST,Ships from the USA
+DigiKey,79.00,270,2 to 4 working days,EST,Ships from the USA
+LCSC,0.00,,1 to 3 weeks,EST,Only inside a JLCPCB order (shipping already paid)
+Allegro,0.00,,1 to 2 working days,EST,Free with Allegro Smart
+local shop,0.00,,same day,EST,

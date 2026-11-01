@@ -14,7 +14,7 @@ Suppliers
 - JLCPCB (assembly): basic / extended library, stock, price breaks in USD. No key needed.
 - Europe, first one that knows the MPN from the same manufacturer: TME, then Farnell, then Mouser. Each needs a
   free API key in the environment, or its lookups are skipped ("no key"):
-    TME_TOKEN, TME_SECRET   (developers.tme.eu, anonymous token + application secret), TME_COUNTRY (default PL)
+    TME_TOKEN, TME_SECRET   (developers.tme.eu, API v2 token + application secret, client in suppliers.py), TME_COUNTRY (default PL)
     FARNELL_API_KEY         (partner.element14.com), FARNELL_STORE (default de.farnell.com)
   JLC_EXTENDED_FEE_USD sets the setup fee per extended line (default 3).
     MOUSER_API_KEY          (mouser.com, Search API)
@@ -32,11 +32,8 @@ the netlist, every line holds one LCSC number, footprint and manufacturer, and l
 answer are listed.
 """
 import argparse
-import base64
 import collections
 import csv
-import hashlib
-import hmac
 import json
 import math
 import os
@@ -59,7 +56,6 @@ KICAD_CLI = None    # set in main()
 UA = {"User-Agent": "Mozilla/5.0 kicad-ai-template bom tool"}
 CACHE_DAYS = 7
 EXTENDED_FEE_USD = float(os.environ.get("JLC_EXTENDED_FEE_USD", "3"))   # per extended line per order, check the live quote
-TME_COUNTRY = os.environ.get("TME_COUNTRY", "PL")                    # TME prices and stock for this country
 FARNELL_STORE = os.environ.get("FARNELL_STORE", "de.farnell.com")     # element14 store id
 CATEGORY_ORDER = ["Semiconductors", "Passives", "Connectors", "Protection", "Other", "External modules"]
 
@@ -259,32 +255,16 @@ def jlc(lcsc):
 
 # ------------------------------------------------------------------ Europe
 def tme(mpn, maker):
-    tok, sec = os.environ.get("TME_TOKEN"), os.environ.get("TME_SECRET")
-    if not (tok and sec):
+    import suppliers                                              # late import: suppliers imports this module
+    try:
+        offers = suppliers.tme(mpn, "mpn")
+    except suppliers.NoKey:
         return {"error": "no key"}
-
-    def call(action, params):
-        url = f"https://api.tme.eu/{action}.json"
-        params = {**params, "Token": tok, "Country": TME_COUNTRY, "Language": "EN", "Currency": "EUR"}
-        q = lambda s, *a: urllib.parse.quote(s, safe="")          # encode "/" too, the signature needs it
-        enc = urllib.parse.urlencode(sorted(params.items()), quote_via=q)
-        base = "POST&" + q(url) + "&" + q(enc)
-        sig = base64.b64encode(hmac.new(sec.encode(), base.encode(), hashlib.sha1).digest()).decode()
-        d = http(url, (enc + "&ApiSignature=" + q(sig)).encode(), {"Content-Type": "application/x-www-form-urlencoded"})
-        if d.get("Status") != "OK":
-            raise RuntimeError(f'TME API {d.get("Status")}: {d.get("Error", "")}')
-        return d
-
-    prods = (call("Products/Search", {"SearchPlain": mpn}).get("Data") or {}).get("ProductList") or []
-    prod = next((p for p in prods if p.get("OriginalSymbol", "").upper() == mpn.upper()
-                 and same_maker(maker, p.get("Producer"))), None)
-    if not prod:
+    o = next((o for o in offers if suppliers.norm(o["mpn"]) == suppliers.norm(mpn) and same_maker(maker, o["maker"])), None)
+    if not o:
         return {"error": "not found"}
-    p = ((call("Products/GetPricesAndStocks", {"SymbolList[0]": prod["Symbol"]}).get("Data") or {}).get("ProductList") or [{}])[0]
-    return {"supplier": "TME", "part": prod["Symbol"], "stock": p.get("Amount"), "moq": prod.get("MinAmount", 1),
-            "mult": prod.get("Multiples", 1), "currency": "EUR", "lead": "",
-            "breaks": [(b["Amount"], b["PriceValue"]) for b in p.get("PriceList") or []],
-            "url": "https://www.tme.eu/en/details/" + urllib.parse.quote(prod["Symbol"].lower())}
+    return {"supplier": "TME", "part": o["part"], "stock": o["stock"], "moq": o["moq"], "mult": o["mult"],
+            "currency": o["currency"], "lead": "", "breaks": o["breaks"], "url": o["url"]}
 
 
 def farnell(mpn, maker):

@@ -1,0 +1,5 @@
+Group,Item,Function,Status,Qty_per_unit,Refs,Manufacturer,MPN,Search,Must,Shop,Price,Currency,Price_date,Price_src,Link,Notes
+Power,"Mains cable CEE 7/7 to IEC C13, 1.8 m, H05VV-F 3G0.75",mains cable,use,1,,Qoltec,50365,power cord CEE 7/7 C13,C13|CEE7/7~schuko,TME,,,,,,Example row: priced live by part number
+Wiring,JST PH 2-pin plug housing,JST PH 2-pin housing,use,2,,JST,PHR-2,,,TME,,,,,,Example row
+Wiring,"JST PH crimp contact, 24 to 30 AWG, loose or cut from a reel",JST PH contact,use,4,,JST,BPH-002T-P0.5S~SPH-002T-P0.5S,,,,,,,,,"Example row: B = loose, S = reel. Each shop is quoted for the cheaper one"
+Equipment,Crimp tool for open-barrel contacts,crimp tool,use,1,,,,,,local shop,60.00,PLN,2026-11-01,EST,,"Example row: no API, hand-kept price. Equipment is counted once"

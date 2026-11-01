@@ -10,6 +10,7 @@ Project-specific facts go in the **Project** section at the end. Edit the rest o
 - `python tools/sch_check.py snapshot|diff|bom`: before/after check of nets, ERC and BOM fields.
 - `python tools/pdf2md.py <pdf>`: raw markdown from a datasheet PDF.
 - `python tools/bom.py`: priced BOM in `out/` (Excel view, JLCPCB upload, distributor order list). Generated, never committed.
+- `python tools/bom_cost.py`: product cost in `bom/` (every part of a unit, cheapest shop mix with shipping, where to save), priced live at TME, Farnell, Mouser, DigiKey and JLCPCB. `--order out/order.csv`: ad hoc shopping list, never committed. Details: skill `/product-cost`.
 - `gh` for branches and PRs.
 - If an MCP server is missing, ask the user to run `setup.cmd` and restart Claude Code. The CLI tools work without MCP.
 
@@ -153,11 +154,12 @@ Details: skill `/add-part`.
 - No official datasheet? Build the md from seller data and say so at the top.
 
 ## Records
+- `bom/purchase.csv`: every part bought outside the JLCPCB assembly. Update it when a part is added, removed or changed, then rerun `tools/bom_cost.py` (skill `/product-cost`).
 - `docs/power_budget.md`: update whenever a load is added, removed or changed. Mark every value DS, EST or TBD.
 - `tradeoff/<topic>.md`: requirements, candidates, decision, for every non-trivial choice.
 - `decisions.md`: only decisions still waiting for the user. Delete a row once it is approved (no decision log). Point references to the deleted row at the approval ("approved in the PR #12 review").
 - `TODO.md`: open questions and missing parts. Work for another repo (firmware, enclosure) lives in that repo's plan. TODO.md holds one pointer to it, no copied list.
-- Generated files (BOM exports, priced lists, order lists) are not committed. The tool that makes them is.
+- Generated files (BOM exports, priced lists, order lists) are not committed. The tool that makes them is. Exception: `bom/cost.md`, `cost.xlsx` and `board_bom.csv`, committed with the CSVs they come from so the cost history is in git.
 
 ## Writing
 - Short and precise. Keep all facts, drop filler.
