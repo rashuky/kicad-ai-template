@@ -72,12 +72,12 @@ def _tme(path, params):
     return d.get("data") or {}
 
 
-def tme(query, mode):
+def tme(query, mode, currency="PLN"):
     found = _tme("products/search", {"phrase": query[:40], "scope[]": "products", "limit": RESULTS})
     prods = ((found.get("products") or {}).get("elements") or [])[:RESULTS]
     if not prods:
         return []
-    data = _tme("products/data", {"currency": "PLN", "scope[]": ["prices", "stock"],
+    data = _tme("products/data", {"currency": currency, "scope[]": ["prices", "stock"],
                                   "symbols[]": [p["symbol"] for p in prods]})
     prices = {p["symbol"]: p for p in data.get("elements") or []}
     out = []
@@ -92,7 +92,7 @@ def tme(query, mode):
         out.append({"shop": "TME", "mpn": next((m for m in syms if norm(m) == norm(query)), syms[0]),
                     "maker": (p.get("manufacturer") or {}).get("name"), "desc": p.get("description") or "",
                     "stock": pr.get("stock_quantity"), "moq": p.get("minimal_amount") or 1,
-                    "mult": p.get("multiples") or 1, "currency": "PLN", "part": p["symbol"],
+                    "mult": p.get("multiples") or 1, "currency": currency, "part": p["symbol"],
                     "breaks": [(b["amount"], b["price"] / net) for b in breaks],
                     "url": "https://www.tme.eu/pl/details/" + urllib.parse.quote(p["symbol"].lower())})
     return out

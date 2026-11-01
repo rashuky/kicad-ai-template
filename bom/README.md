@@ -1,6 +1,6 @@
 # BOM and cost
 
-What one complete unit of the product costs, delivered to Poland, at the cheapest suppliers, and where to save. Result: [cost.md](cost.md) (also `cost.xlsx`).
+What one complete unit of the product costs, delivered to Poland, at the cheapest suppliers, and where to save. Result: `cost.md` and `cost.xlsx`, written by the first run.
 
 | File | Kept by | Content |
 |---|---|---|
@@ -11,6 +11,10 @@ What one complete unit of the product costs, delivered to Poland, at the cheapes
 | `cost.md`, `cost.xlsx` | `tools/bom_cost.py` | Cost per unit at 1, 5 and 10 units, most expensive items, where to save, every item with its supplier, distributor quotes, checks |
 
 ## Product cost
+
+Poland by default: PLN, NBP rates and `VAT` in `tools/bom_cost.py`, `FARNELL_STORE` and the DigiKey locale in `tools/suppliers.py`, `TME_COUNTRY`, shipping in `shops.csv`. Change them there for another country.
+
+`docs/external_parts.csv` is a different list: rough per-board EUR estimates for the `tools/bom.py` sheet in `out/`. The product cost reads only `purchase.csv`.
 
 ```
 python tools/bom_cost.py
@@ -68,7 +72,7 @@ Shops without a usable price API (prices hand-kept, `Price_src` DS when read fro
 |---|---|
 | Allegro | The app key works, but offer search with prices (`/offers/listing`) is closed until Allegro enables it for the app. Ask on developer.allegro.pl. Send the User-Agent generated for the app |
 | Amazon | The Product Advertising API is retired. Its successor needs an affiliate account with 10 sales |
-| RS | The API portal did not give a working key |
+| RS | No public price API |
 | Small web shops | No customer API |
 
 Never scrape shop pages past a bot check or CAPTCHA. The check "Distributor API keys set" lists the missing ones.
@@ -79,13 +83,17 @@ Shipping and free-shipping thresholds in `shops.csv` are mostly estimates. Corre
 
 | Column | Meaning |
 |---|---|
+| `Item` | Name in the cost tables. The start of it also works as an ad hoc order line |
 | `Group` | One of `GROUPS` in `tools/bom_cost.py` (edit the list per project). `Board` holds hand-fitted board parts, `Equipment` is counted once |
 | `Function` | What the part does. An `option` row with the same `Function` is an alternative to the part in use |
 | `Status` | `use` (part of the product) or `option` (alternative, compared under "Where to save", not counted) |
 | `Qty_per_unit` | Amount one unit uses. Equipment rows: amount needed once |
+| `Manufacturer` | Maker as the distributors name it. Offers from another maker are ignored |
 | `Refs` | Schematic parts fitted by hand (left out of the JLCPCB board cost) |
 | `MPN` | Manufacturer part number. Searched first at every distributor. Equivalent numbers separated by `~` (JST loose `B...` and reel `S...` contacts): each shop is quoted for the cheapest of them |
 | `Search` | Search words for a part with no MPN, or one no distributor knows. Empty: no look-alikes |
 | `Must` | Terms every search result must hold, separated by `\|`. `a~b` = a or b. `>=6A` = a value of at least 6 with the unit A in the description (ratings). Matched without spaces and case. A term with digits does not match inside a longer number (`20V` is not in `120V`). Farnell and Mouser describe parts in Polish: add Polish alternatives (`capacitive~pojemno`) |
 | `Shop`, `Price`, `Currency` | Hand-kept offer: gross price each (VAT included) |
+| `Price_date` | Day the hand-kept price was read (YYYY-MM-DD). Older than 90 days fails a check |
 | `Price_src` | DS = read from the shop page, EST = estimate |
+| `Link`, `Notes` | Product page of the hand-kept offer. Notes for the buyer (stock, trade-offs) |

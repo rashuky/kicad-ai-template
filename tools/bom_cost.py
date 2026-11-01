@@ -56,7 +56,7 @@ SKIP = set()                                     # --skip-shop: shops left out o
 
 
 def read(name):
-    with open(os.path.join(BOM, name), encoding="utf-8") as f:
+    with open(os.path.join(BOM, name), encoding="utf-8-sig") as f:
         return list(csv.DictReader(f))
 
 
@@ -115,14 +115,14 @@ def board_cost(lines, n, fx, orders):
     parts = sum((bx.jlc_line(ln, n) or (0, 0, 0))[2] for ln in lines)
     ext = sum(1 for ln in lines if (ln.get("jlc") or {}).get("library") == "extended")
     b = {"n": n, "parts_usd": parts, "ext": ext, "fixed_usd": JLC_FIXED_EST_USD,
-         "pln": (parts + 3 * ext + JLC_FIXED_EST_USD) * VAT / n * fx["USD"],
+         "pln": (parts + bx.EXTENDED_FEE_USD * ext + JLC_FIXED_EST_USD) * VAT / n * fx["USD"],
          "unpriced": [ln for ln in lines if not (ln.get("jlc") or {}).get("breaks")]}
     order = next((o for o in orders if o["Shop"] == "JLCPCB" and o["Amount"].strip() and int(o["Boards"]) == n), None)
     if order:
         b["pln"] = fnum(order["Amount"]) * fx[order["Currency"]] / n
         b["src"] = f'order {order["Order"]}: {order["Amount"]} {order["Currency"]} / {n} boards'
     else:
-        b["src"] = (f"EST: JLCPCB parts ${parts:.2f} (live) + {ext} extended lines x $3 + ${JLC_FIXED_EST_USD} PCB, "
+        b["src"] = (f"EST: JLCPCB parts ${parts:.2f} (live) + {ext} extended lines x ${bx.EXTENDED_FEE_USD:g} + ${JLC_FIXED_EST_USD} PCB, "
                     f"assembly and shipping (EST), +23 % VAT, / {n} boards")
     return b
 
@@ -309,7 +309,7 @@ def batch(cache, fx, shops, units, lines, orders):
     p = plan(rows, shops)
     groups = collections.OrderedDict((g, 0.0) for g in GROUPS if g != "Equipment")
     for r in rows:
-        if r["qn"]:
+        if r["qn"] and r["Group"] in groups:         # unknown groups fail the check "Status and group known"
             groups[r["Group"]] += r["qn"] * (r["each"] or 0) / units
     b = board_cost(lines, units, fx, orders) if lines is not None else None
     groups["Board"] += b["pln"] if b else 0
@@ -451,7 +451,7 @@ def write_md(path, batches, detail, eq, opts, chk, fxnote, generated):
         if not b["src"].startswith("order"):
             k = d["usd_pln"] * VAT / detail
             L += ["", f"- JLCPCB parts: {zl(b['parts_usd'] * k)} zł per board.",
-                  f"- Extended-part fees: {b['ext']} lines x $3 per order = {zl(3 * b['ext'] * k)} zł per board. "
+                  f"- Extended-part fees: {b['ext']} lines x ${bx.EXTENDED_FEE_USD:g} per order = {zl(bx.EXTENDED_FEE_USD * b['ext'] * k)} zł per board. "
                   "Fewer extended lines or a larger batch lowers it.",
                   f"- PCB, assembly, shipping (EST): {zl(b['fixed_usd'] * k)} zł per board."]
 
@@ -707,9 +707,13 @@ def main():
     ap.add_argument("--offline", action="store_true", help="use the cache only, no network")
     ap.add_argument("--refresh", action="store_true", help="ignore the cache")
     ap.add_argument("--no-board", action="store_true", help="skip the schematic and JLCPCB (no kicad-cli needed)")
+    ap.add_argument("--keys", action="store_true", help="only list the distributor API keys that are missing")
     ap.add_argument("--project", help="project folder or .kicad_pro (default: the only project in the repo)")
     ap.add_argument("--skip-shop", action="append", default=[], help="leave this shop out (repeatable)")
     a = ap.parse_args()
+    if a.keys:
+        print("missing API keys: " + (", ".join(sp.keys_missing()) or "none"))
+        return
     SKIP.update(a.skip_shop)
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     cache = bx.Cache(os.path.join(bx.ROOT, "out", "bom_cache.json"), a.offline, a.refresh)

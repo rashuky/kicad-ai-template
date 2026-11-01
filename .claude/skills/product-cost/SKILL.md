@@ -8,7 +8,7 @@ description: Build and keep the product BOM and cost estimate in bom/, priced li
 The cost model is `tools/bom_cost.py` with `tools/suppliers.py`. Folder layout, columns and API keys: [bom/README.md](../../../bom/README.md).
 
 ## 1. Shop access
-1. Check the keys: run `python tools/bom_cost.py --no-board` and read the check "Distributor API keys set".
+1. Check the keys: `python tools/bom_cost.py --keys` (writes nothing).
 2. A missing key: give the user the table in `bom/README.md` ("API keys") and the `Read-Host` snippet. Keys go into user environment variables only. Never ask for a key in the chat, never print one, never commit one. Mask key values in any debug output.
 3. After the user adds a key, VS Code (or the terminal) must restart to see it. To test before that, read the value from the user environment (`[Environment]::GetEnvironmentVariable(name, "User")`) inside the same command.
 4. A key that answers 403: read the shop's current API docs before blaming the key (TME tokens made after 14 May 2026 work only with API v2).

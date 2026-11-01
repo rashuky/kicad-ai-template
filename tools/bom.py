@@ -257,7 +257,7 @@ def jlc(lcsc):
 def tme(mpn, maker):
     import suppliers                                              # late import: suppliers imports this module
     try:
-        offers = suppliers.tme(mpn, "mpn")
+        offers = suppliers.tme(mpn, "mpn", currency="EUR")       # the sheet sums EU lines in EUR
     except suppliers.NoKey:
         return {"error": "no key"}
     o = next((o for o in offers if suppliers.norm(o["mpn"]) == suppliers.norm(mpn) and same_maker(maker, o["maker"])), None)
