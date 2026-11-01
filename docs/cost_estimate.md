@@ -7,7 +7,7 @@ BOM files are generated, not committed. `python tools/bom.py` writes to `out/`:
 - `bom_jlcpcb.csv`: the JLCPCB assembly BOM upload.
 - `bom_order_<N>.csv`: manufacturer, MPN, quantity for N boards. Upload it to the TME or Farnell BOM tool for a real quote.
 
-Modules and other things bought for the board but not on the schematic (MCU module, display, PSU, cables) go into `docs/external_parts.csv` (`Est_price_EUR` is per piece, `Category` groups them in the sheet). The tool lists them too.
+Modules and other things bought for the board but not on the schematic (MCU module, display, PSU, cables) go into `docs/external_parts.csv` (`Est_price_EUR` is per piece, `Category` groups them in the sheet). The tool lists them too. The product cost with live prices and shipping is `bom/cost.md` from `bom/purchase.csv` (skill `/product-cost`).
 
 ## Board facts
 

@@ -25,7 +25,7 @@ Built and proven on a real 200-part board (a grow box controller with power stag
 
 The rules the AI follows are in [CLAUDE.md](CLAUDE.md): branch per change, edit a copy, verify
 (netlist diff, ERC diff, BOM fields, lint, render, independent review agent), then PR.
-Workflows live as Claude Code skills: `/start-project`, `/add-part`, `/verify-schematic`, `/plan-routing`.
+Workflows live as Claude Code skills: `/start-project`, `/add-part`, `/verify-schematic`, `/plan-routing`, `/product-cost`.
 PCBs are routed by planned scripts, never by a board autorouter (helpers in `tools/pcb/`). A maze helper may route only the few long nets a measured rule picks (hybrid routing), and every result is scored with `tools/pcb/route_metrics.py`.
 
 ## Requirements
@@ -137,6 +137,7 @@ tools\kschlint inspect kicad --sheet Power --refs U101
 python tools\pdf2md.py datasheet\TPS62933.pdf      # raw markdown of a datasheet
 python tools\sch_pin_stubs.py                      # pins without a straight wire stub
 python tools\bom.py --boards 1,5,10                # priced BOM, JLCPCB upload, order list into out\
+python tools\bom_cost.py                           # product cost per unit into bom\ (cost.md, cost.xlsx, board_bom.csv)
 python tools\pcb\drc_summary.py kicad\Project.kicad_pcb   # DRC errors per type, unconnected per net
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\snapshot.py kicad\Project.kicad_pcb snap.kicad_pcb   # board without GND fill, to render
 & "C:\Program Files\KiCad\10.0\bin\python.exe" tools\pcb\route_metrics.py new\Project.kicad_pcb old\Project.kicad_pcb   # routing quality table
@@ -199,7 +200,8 @@ Hybrid (hand blocks plus the maze on 4 measured nets) kept the hand version's be
 | `tools/rename_project.ps1` | rename the KiCad project |
 | `setup.cmd`, `setup.ps1` | one-shot setup |
 | `CLAUDE.md` | rules for the AI |
-| `.claude/skills/` | `/start-project`, `/add-part`, `/verify-schematic`, `/plan-routing` |
+| `tools/bom_cost.py`, `tools/suppliers.py` | product cost from `bom/purchase.csv` at the cheapest shop mix with shipping, live distributor search (part number, then parameters), ad hoc shopping lists into `out/`. Setup and API keys: [bom/README.md](bom/README.md) |
+| `.claude/skills/` | `/start-project`, `/add-part`, `/verify-schematic`, `/plan-routing`, `/product-cost` |
 | `.claude/settings.json` | enables the MCP servers, lets kicad-cli, kschlint, the check scripts and read-only git run without prompts |
 | `.mcp.json` | MCP servers with your machine's paths (generated, git-ignored) |
 

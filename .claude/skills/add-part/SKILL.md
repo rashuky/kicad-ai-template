@@ -16,4 +16,5 @@ description: Choose and document a new part. Sourcing check, datasheet markdown,
 3. **Symbol and footprint.** KiCad built-in first (search `C:/Program Files/KiCad/10.0/share/kicad/symbols` and `footprints`). If missing: add to `kicad/lib/Project.kicad_sym` and `kicad/lib/Project.pretty/`, 3D model in `kicad/lib/Project.3dshapes/`. Check pin numbers against the datasheet pinout, pad by pad.
 4. **Fields.** `Manufacturer`, `MPN`, `LCSC Part`, `Datasheet` (URL) on the symbol.
 5. **Power.** If it draws or switches current, update `docs/power_budget.md` (DS, EST or TBD per value).
-6. **Place and wire,** then run `/verify-schematic`.
+6. **Cost.** A part bought outside the JLCPCB assembly (module, cable, connector housing, hand-fitted part) gets a row in `bom/purchase.csv`, then `/product-cost`.
+7. **Place and wire,** then run `/verify-schematic`.
